@@ -1,0 +1,40 @@
+# name=cslvpa-kcfa-dlog
+
+.include "V.dom"
+.include "LV.dom"
+.include "F.dom"
+.include "C.dom"
+.include "H.dom"
+
+.bddvarorder F0_V0_LV0xLV1_F1_C0xC1_H0
+
+###
+# Relations
+###
+
+CVC(c:C0,v:V,c1:C1) input
+CFC(c:C0,f:F,c1:C1) input
+FC(s:F,c:C) input
+CH(c:C,h:H) input
+
+VFLV(v:V,f:F,lv:LV) input
+SFLV(s:F0,f:F1,lv:LV) input
+LVFLV(lv0:LV0,f:F,lv1:LV1) input
+
+CLVC(c0:C0,lv:LV,c1:C1) output
+CLVH(c:C,lv:LV,h:H) output
+SLVC(lv:LV,c:C) output
+
+###
+# Constraints
+###
+
+CLVC(c0,lv,c1) :- CVC(c0,v,c), CFC(c,f,c1), VFLV(v,f,lv).
+CLVC(c0,lv,c1) :- CLVC(c0,lv0,c), CFC(c,f,c1), LVFLV(lv0,f,lv).
+
+CLVH(c,lv,h) :- CLVC(c,lv,d), CH(d,h).
+
+SLVC(lv,c) :- FC(s,c0), CFC(c0,f,c), SFLV(s,f,lv).
+SLVC(lv,c) :- SLVC(lv0,c0), CFC(c0,f,c), LVFLV(lv0,f,lv).
+
+

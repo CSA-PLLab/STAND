@@ -1,0 +1,20 @@
+# name=ci-0cfa-reachable-dlog
+
+.include "M.dom"
+.include "P.dom"
+
+.bddvarorder M0_P0
+
+###
+# Relations
+###
+reachableM(m:M) input
+MP(m:M,p:P) input
+
+reachableP(p:P) output
+
+###
+# Constrains
+###
+
+reachableP(p) :- reachableM(m), MP(m,p).

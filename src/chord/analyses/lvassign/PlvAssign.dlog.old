@@ -1,0 +1,137 @@
+# name=PlvAssign-dlog
+
+.include "P.dom"
+.include "M.dom"
+.include "I.dom"
+.include "Z.dom"
+.include "V.dom"
+.include "H.dom"
+.include "LV.dom"
+.include "F.dom"
+
+#.bddvarorder M0_P0xP1_I0_Z0_V0xV1_LV0xLV1_F0xF1
+.bddvarorder I0xM0_P0xP1_V0xV1_LV0xLV1_H0_F0xF1_Z0
+
+###
+# Relations
+###
+
+StatLV(lv:LV) input
+
+VFLV(v:V,f:F,lv:LV) input
+SFLV(s:F0,f:F1,lv:LV) input
+LVFLV(lv0:LV0,f:F,lv1:LV1) input
+reachableM(m:M) input
+MP(m:M,p:P) input
+mustSameValVLV(v:V,lv:LV) input
+mustSameValVS(v:V,s:F) input
+
+specIM(i:I,m:M) input
+statIM(i:I,m:M) input
+virtIM(i:I,m:M) input
+resolvedIM(i:I,m:M)
+IinvkAsgnVV(i:I,v0:V0,v1:V1)
+IinvkArg(i:I,z:Z,v:V1) input
+MmethArg(m:M,z:Z,v:V) input
+PI(p:P,i:I) input
+IstrUpdLV(i:I,lv:LV)
+#lvLvRetAssignP(p0:P0,p1:P1,lv0:LV0,lv1:LV1) input
+#lvLvRetArgsP(p0:P0,p1:P1,lv0:LV0,lv1:LV1) input
+
+LVreachableLV(lv0:LV0,lv1:LV1) input
+SreachableLV(s:F,lv:LV) input
+VreachableLV(v:V,lv:LV) input
+PliveV(p:P,v:V) input
+PliveLV(p:P,lv:LV) input
+aliasLVLV(lv0:LV0,lv1:LV1) input
+
+PassignVLV(p:P,v:V,lv:LV) output
+PassignLVV(p:P,lv:LV,v:V) output
+PassignLVLV(p:P,lv0:LV0,lv1:LV1) output
+
+PstrUpdLV(p:P,lv:LV) output
+PstrUpdS(p:P,s:F) output
+
+lvAssignedGetFP(p:P,lv:LV)
+lvUpdatedGetFP(p:P,lv:LV)
+
+lvAssignedVAP(p:P,lv:LV) output
+lvUpdatedVAP(p:P,lv:LV) output
+
+RPobjNullAsgnInst(p:P,v:V) input 
+RPobjValAsgnInst(p:P,v:V,h:H) input 
+RPobjVarAsgnInst(p:P,v0:V0,v1:V1) input 
+RPgetInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
+RPgetStatFldInst(p:P,v:V,s:F) input
+RPputInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
+RPputInstFldNullInst(p:P,v:V,f:F) input 
+RPputStatFldInst(p:P,s:F,v:V) input
+RPputStatFldNullInst(p:P,s:F) input
+RPcheckCastInst(p:P,v0:V0,v1:V1) input
+
+PinvLV(p:P,lv:LV) output
+PinvV(p:P,v:V) output
+
+PextAssignLVV(p:P,lv:LV,v:V) output
+PextAssignLVLV(p:P,lv0:LV0,lv1:LV1) output
+
+###
+# Constraints
+###
+
+PassignVLV(p,v,lv) :- RPgetInstFldInst(p,v,f,v0), VFLV(v0,f,lv).
+PassignLVV(p,lv,v) :- RPputInstFldInst(p,v0,f,v), VFLV(v0,f,lv), PliveV(p,v0).
+#PassignLVV(p,lv,v) :- RPputInstFldInst(p,v0,f,v), mustSameValVLV(v0,lv0), LVFLV(lv0,f,lv), PliveLV(p,lv). split
+#PassignLVV(p,lv,v) :- RPputInstFldInst(p,v0,f,v), mustSameValVS(v0,s), SFLV(s,f,lv).
+
+PassignLVLV(p,lv0,lv1) :- RPobjVarAsgnInst(p,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+PassignLVLV(p,lv0,lv1) :- RPgetStatFldInst(p,v,s), VFLV(v,f,lv0), SFLV(s,f,lv1).
+PassignLVLV(p,lv0,lv1) :- RPputStatFldInst(p,s,v), SFLV(s,f,lv0), VFLV(v,f,lv1).
+PassignLVLV(p,lv0,lv1) :- PassignVLV(p,v,lv), VFLV(v,f,lv0), LVFLV(lv,f,lv1).
+PassignLVLV(p,lv0,lv1) :- PassignLVV(p,lv,v), LVFLV(lv,f,lv0), VFLV(v,f,lv1).
+PassignLVLV(p,lv0,lv1) :- PassignLVLV(p,lv3,lv4), LVFLV(lv3,f,lv0), LVFLV(lv4,f,lv1).
+
+PextAssignLVV(p,lv,v) :- PassignLVV(p,lv0,v), aliasLVLV(lv0,lv), PliveLV(p,lv).
+PextAssignLVV(p,lv,v) :- PassignLVV(p,lv0,v), aliasLVLV(lv0,lv), StatLV(lv).
+PextAssignLVLV(p,lv0,lv1) :- PextAssignLVV(p,lv,v), LVFLV(lv,f,lv0), VFLV(v,f,lv1).
+PextAssignLVLV(p,lv0,lv1) :- PextAssignLVLV(p,lv3,lv4), LVFLV(lv3,f,lv0), LVFLV(lv4,f,lv1).
+
+#PstrUpdLV(p,lv) :- PassignLVLV(p,lv,_).
+#PstrUpdLV(p,lv) :- PassignLVV(p,lv,_).
+PstrUpdLV(p,lv) :- RPputInstFldInst(p,v,f,_), VFLV(v,f,lv).
+PstrUpdLV(p,lv) :- RPputInstFldInst(p,v0,f,_), mustSameValVLV(v0,lv0), LVFLV(lv0,f,lv).
+PstrUpdLV(p,lv) :- RPputInstFldInst(p,v0,f,_), mustSameValVS(v0,s), SFLV(s,f,lv).
+PstrUpdLV(p,lv) :- RPputInstFldNullInst(p,v,f), VFLV(v,f,lv).
+PstrUpdLV(p,lv) :- RPputInstFldNullInst(p,v,f), mustSameValVLV(v,lv0), LVFLV(lv0,f,lv).
+PstrUpdLV(p,lv) :- RPputInstFldNullInst(p,v,f), mustSameValVS(v,s), SFLV(s,f,lv).
+resolvedIM(i,m) :- specIM(i,m).
+resolvedIM(i,m) :- statIM(i,m).
+resolvedIM(i,m) :- virtIM(i,m).
+IinvkAsgnVV(i,v0,v1) :- resolvedIM(i,m), MmethArg(m,z,v0), IinvkArg(i,z,v1).
+IstrUpdLV(i,lv) :- IinvkAsgnVV(i,_,v1), VFLV(v1,_,lv).
+#IstrUpdLV(i,lv) :- IinvkAsgnVV(i,v0,v1), mustSameValVLV(v1,lv1), LVFLV(lv1,f,lv), VFLV(v0,f,_).
+IstrUpdLV(i,lv) :- IinvkAsgnVV(i,_,v1), mustSameValVLV(v1,lv1), LVFLV(lv1,_,lv).
+#IstrUpdLV(i,lv) :- resolvedIM(i,_), StatLV(lv).
+#IstrUpdLV(i,lv) :- IinvkArg(i,_,v), VFLV(v,_,lv).
+#IstrUpdLV(i,lv) :- IinvkArg(i,_,v), mustSameValVLV(v,lv0), LVFLV(lv0,_,lv).
+PstrUpdLV(p,lv) :- PI(p,i), IstrUpdLV(i,lv), PliveLV(p, lv). 
+#PstrUpdLV(p,lv) :- RPputStatFldInst(p,s,_), SFLV(s,_,lv).
+PstrUpdLV(p,lv) :- PstrUpdS(p,s), SreachableLV(s,lv).
+PstrUpdLV(p,lv) :- PstrUpdLV(p,lv0), LVreachableLV(lv0,lv).
+
+PstrUpdS(p,s) :- RPputStatFldInst(p,s,_).
+PstrUpdS(p,s) :- RPputStatFldNullInst(p,s).
+definedS(s) :- RPputStatFldInst(_,s,_).
+PstrUpdS(p,s) :- PI(p,_), definedS(s).
+
+lvAssignedGetFP(p,lv) :- PassignVLV(p,_,_), PassignLVLV(p,lv,_).
+lvUpdatedGetFP(p,lv) :- PassignVLV(p,v,_), VreachableLV(v,lv).
+
+#lvAssignedVAP(p,lv) :- RPcheckCastInst(p,_,_), PassignLVLV(p,lv,_).
+#lvUpdatedVAP(p,lv) :- RPcheckCastInst(p,v,_), VreachableLV(v,lv).
+
+PinvLV(p,lv) :- lvUpdatedGetFP(p,lv), !lvAssignedGetFP(p,lv).
+#PinvLV(p,lv) :- lvUpdatedVAP(p,lv), !lvAssignedVAP(p,lv).
+
+# invV(v) :- RPgetInstFldInst(_,v,f,_), f = 0.
+PinvV(p,v) :- RPgetInstFldInst(p,v,f,_), f = 0.

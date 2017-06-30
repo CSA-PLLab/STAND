@@ -1,0 +1,37 @@
+# name=heaptype-kcfa-dlog
+
+.include "C.dom"
+.include "V.dom"
+.include "H.dom"
+.include "F.dom"
+.include "T.dom"
+
+.bddvarorder C0_V0_F0xF1_H0xH1_T0xT1
+###
+# Relations
+###
+HT(h:H,t:T1) input
+HFH(h:H,f:F,o:H) input
+FH(s:F,h:H) input
+CVH(c:C,v:V,h:H) input
+
+
+VFH(v:V,f:F,h:H) 
+SFH(s:F,f:F,h:H) 
+CVT(c:C,v:V,t:T)
+VtypeT(v:V,t:T) output
+StypeT(s:F,t:T) output
+VFtypeT(v:V,f:F,t:T) output
+SFtypeT(s:F,f:F,t:T) output
+
+###
+# Constraints
+###
+CVT(c,v,t) :- CVH(c,v,h), HT(h,t).
+VtypeT(v,t) :- CVT(_,v,t).
+StypeT(s,t) :- FH(s,h), HT(h,t).
+
+VFH(v,f,h) :- CVH(_,v,h0), HFH(h0,f,h).
+SFH(s,f,h) :- FH(s,h0), HFH(h0,f,h).
+VFtypeT(v,f,t) :- VFH(v,f,h), HT(h,t).
+SFtypeT(s,f,t) :- SFH(s,f,h), HT(h,t).

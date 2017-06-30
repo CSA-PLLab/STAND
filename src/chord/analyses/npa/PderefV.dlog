@@ -1,0 +1,32 @@
+# name=PderefV-dlog
+
+.include "V.dom"
+.include "P.dom"
+.include "F.dom"
+.include "I.dom"
+.include "M.dom"
+
+.bddvarorder I0xM0_P0_V0xV1_F0
+
+###
+# Relations
+###
+
+RPgetInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
+RPputInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
+RPcheckCastInst(p:P,v0:V0,v1:V1) input
+IinvkArg0(i:I,v:V1) input
+
+reachableI(i:I) input
+PI(p:P,i:I) input
+
+PderefV(p:P,v:V) output
+
+###
+# Constraints
+###
+PderefV(p,v) :- RPgetInstFldInst(p,_,_,v).
+PderefV(p,v) :- RPputInstFldInst(p,v,_,_).
+PderefV(p,v) :- RPcheckCastInst(p,_,v).
+
+PderefV(p,v) :- reachableI(i), IinvkArg0(i,v), PI(p,i).

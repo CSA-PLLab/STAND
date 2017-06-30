@@ -1,0 +1,165 @@
+package chord.analyses.lval;
+
+
+import java.util.HashSet;
+import java.util.Set;
+
+import joeq.Class.jq_Class;
+import joeq.Class.jq_Field;
+import joeq.Class.jq_Method;
+import joeq.Class.jq_Type;
+import joeq.Compiler.Quad.RegisterFactory.Register;
+
+import chord.analyses.var.DomV;
+import chord.bddbddb.Dom;
+import chord.bddbddb.Rel.PairIterable;
+import chord.bddbddb.Rel.TrioIterable;
+import chord.program.Program;
+import chord.project.Chord;
+import chord.project.ClassicProject;
+import chord.project.analyses.ProgramDom;
+import chord.project.analyses.ProgramRel;
+import chord.util.tuple.object.Pair;
+import chord.util.tuple.object.Trio;
+
+@Chord(
+	name = "LV",
+	consumes = {"VtypeT","StypeT","VFtypeT","SFtypeT"}
+)
+
+public class DomLV extends ProgramDom<Lvalue> {
+	Set<Trio<jq_Field,jq_Field,StatLvalue>> sfLvRelSet;
+	Set<Trio<StatLvalue,jq_Field,StatLvalue>> slvLvRelSet;
+	Set<Trio<Register,jq_Field,VarLvalue>> vLvRelSet;
+	Set<Trio<VarLvalue,jq_Field,VarLvalue>> vlvLvRelSet;
+	private Program program;
+	
+	@Override
+	public void init() {    
+		program = Program.g();
+		sfLvRelSet = new HashSet<Trio<jq_Field,jq_Field,StatLvalue>>();
+		slvLvRelSet = new HashSet<Trio<StatLvalue,jq_Field,StatLvalue>>();
+		vLvRelSet = new HashSet<Trio<Register,jq_Field,VarLvalue>>();
+		vlvLvRelSet = new HashSet<Trio<VarLvalue,jq_Field,VarLvalue>>();
+	}
+	
+	@Override
+	public void fill() {
+		// variable lvalues
+		ProgramRel vt = (ProgramRel) ClassicProject.g().getTrgt("VtypeT");		
+		Dom[] doms = vt.getDoms();
+	    DomV domV = (DomV) doms[0];
+		vt.load();		
+		PairIterable<Register, jq_Type> vttuples = vt.getAry2ValTuples();
+		for (Pair<Register, jq_Type> p : vttuples) {		
+			Register v = (Register) p.val0;
+			jq_Method m = domV.getMethod(v);
+			jq_Type t = (jq_Type) p.val1;
+			if(t instanceof jq_Class) {
+				jq_Class cl = (jq_Class) program.getClass(t.toString());
+				if(cl != null) {
+					jq_Field[] farr = cl.getInstanceFields();
+					for(jq_Field f : farr) {
+						if(f.getType() instanceof jq_Class) {							
+							VarLvalue newlv = new VarLvalue(m, v, f);
+							if(add(newlv)) {
+								Trio<Register,jq_Field,VarLvalue> apRel = new Trio<Register,jq_Field,VarLvalue>(v, f, newlv);
+						  		vLvRelSet.add(apRel);
+							}
+						}
+					}
+				}
+			}
+			    
+		}		
+		vt.close();
+		
+		ProgramRel vft = (ProgramRel) ClassicProject.g().getTrgt("VFtypeT");		
+		doms = vft.getDoms();
+	    domV = (DomV) doms[0];
+		vft.load();		
+		TrioIterable<Register, jq_Field, jq_Type> vfttuples = vft.getAry3ValTuples();
+		for (Trio<Register, jq_Field, jq_Type> p : vfttuples) {		
+			Register v = (Register) p.val0;
+			jq_Method m = domV.getMethod(v);
+			jq_Field f0 = (jq_Field) p.val1;
+			jq_Type t = (jq_Type) p.val2;
+			if((f0 != null) && (t instanceof jq_Class)) {
+				jq_Class cl = (jq_Class) program.getClass(t.toString());
+				if(cl != null) {
+					jq_Field[] farr = cl.getInstanceFields();
+					for(jq_Field f : farr) {
+						if(f.getType() instanceof jq_Class) {							
+							VarLvalue newlv = new VarLvalue(m, v, f0, f);
+							if(add(newlv)) {
+								Trio<VarLvalue,jq_Field,VarLvalue> apRel = new Trio<VarLvalue,jq_Field,VarLvalue>(new VarLvalue(m, v, f0), f, newlv);
+						  		vlvLvRelSet.add(apRel);
+							}
+						}
+					}
+				}
+			}
+			    
+		}		
+		vft.close();										
+		
+		//static lvalues		
+		ProgramRel st = (ProgramRel) ClassicProject.g().getTrgt("StypeT");		
+		
+		st.load();		
+		PairIterable<jq_Field, jq_Type> sttuples = st.getAry2ValTuples();
+		for (Pair<jq_Field, jq_Type> p : sttuples) {		
+			jq_Field v = (jq_Field) p.val0;			
+			jq_Type t = (jq_Type) p.val1;
+			if(t instanceof jq_Class) {
+				jq_Class cl = (jq_Class) program.getClass(t.toString());
+				if(cl != null) {
+					jq_Field[] farr = cl.getInstanceFields();
+					for(jq_Field f : farr) {
+						if(f.getType() instanceof jq_Class) {
+							StatLvalue newlv = new StatLvalue(v, f);
+							if(add(newlv)) {
+								Trio<jq_Field,jq_Field,StatLvalue> apRel = new Trio<jq_Field, jq_Field,StatLvalue>(v, f, newlv);
+						  		sfLvRelSet.add(apRel);
+							}
+						}
+					}
+				}
+			}
+			    
+		}		
+		st.close();
+		
+		ProgramRel sft = (ProgramRel) ClassicProject.g().getTrgt("SFtypeT");				
+		sft.load();		
+		TrioIterable<jq_Field, jq_Field, jq_Type> sfttuples = sft.getAry3ValTuples();
+		for (Trio<jq_Field, jq_Field, jq_Type> p : sfttuples) {		
+			jq_Field v = (jq_Field) p.val0;			
+			jq_Field f0 = (jq_Field) p.val1;
+			jq_Type t = (jq_Type) p.val2;
+			if((f0 != null) && (t instanceof jq_Class)) {
+				jq_Class cl = (jq_Class) program.getClass(t.toString());
+				if(cl != null) {
+					jq_Field[] farr = cl.getInstanceFields();
+					for(jq_Field f : farr) {
+						if(f.getType() instanceof jq_Class) {
+							StatLvalue newlv = new StatLvalue(v, f0, f);
+							if(add(newlv)) {
+								Trio<StatLvalue,jq_Field,StatLvalue> apRel = new Trio<StatLvalue,jq_Field,StatLvalue>(new StatLvalue(v, f0), f, newlv);
+						  		slvLvRelSet.add(apRel);
+							}
+						}
+					}
+				}
+			}
+			    
+		}		
+		sft.close();						
+	}
+		
+	  
+	public String toUniqueString(Lvalue lv) {
+		return lv + "!" + ((lv.isStaic())? ((StatLvalue)lv).getDeclaringClass() : ((VarLvalue)lv).getMethod());
+	}
+
+}

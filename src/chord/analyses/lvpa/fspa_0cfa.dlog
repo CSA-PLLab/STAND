@@ -1,0 +1,241 @@
+# name=fspa-0cfa-dlog
+
+.include "M.dom"
+.include "I.dom"
+.include "V.dom"
+.include "H.dom"
+.include "P.dom"
+.include "F.dom"
+.include "T.dom"
+.include "Z.dom"
+.include "LV.dom"
+
+# .bddvarorder M0_P0xP1_I0_Z0_V0xV1_LV0xLV1_F0_H0_T0xT1
+.bddvarorder I0xM0xM1_T0_P0xP1_V0xV1_LV0xLV1_F0_T1_H0_Z0
+
+###
+# Relations
+### 
+
+MI(m:M,i:I) input
+IinvkArg0(i:I0,v:V1) input
+IinvkArg(i:I0,z:Z0,v:V1) input
+IinvkRet(i:I,z:Z,v:V) input
+MmethArg(m:M,z:Z,v:V) input
+MmethRet(m:M0,z:Z0,v:V1) input
+IHM(i:I,h:H,m:M) input
+IH(i:I,h:H) 
+specIM(i:I,m:M) input
+statIM(i:I,m:M) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+PI(p:P,i:I) input
+PP(p0:P0,p1:P1) input
+
+PcallP(p0:P0,p1:P1)
+NextCallPP(p0:P0,p1:P1)
+PretP(p0:P0,p1:P1) 
+
+VFLV(v:V,f:F,lv:LV) input
+LVFLV(lv0:LV,f:F0,lv1:LV1) input
+mustSameValVLV(v:V,lv:LV) input
+# VreachableLV(v:V,lv:LV) input
+# LVreachableLV(lv0:LV,lv1:LV) input
+PliveV(p:P,v:V) input
+PliveLV(p:P,lv:LV) input
+
+VH(v:V,h:H) input
+LVH(lv:LV,h:H) input
+VHfilter(v:V,h:H) input
+aliasLVLV(lv0:LV,lv1:LV) input
+
+HT(h:H,t:T1) input
+staticTM(t:T,m:M) input
+staticTF(t:T,f:F) input
+classT(t:T) input
+sub(t0:T1,t1:T0) input
+clinitTM(t:T,m:M) input
+
+StatLV(lv:LV) input
+
+PinvV(p:P,v:V) input
+PinvLV(p:P,lv:LV) input
+
+MobjValAsgnInst(m:M,v:V,h:H) input
+MputStatFldInst(m:M,s:F,v:V) input
+MgetStatFldInst(m:M,v:V,s:F) input
+RPobjVarAsgnInst(p:P,v0:V0,v1:V1) input
+RPgetStatFldInst(p:P,v:V,s:F) input
+RPputStatFldInst(p:P,s:F,v:V) input
+
+PassignVLV(p:P,v:V,lv:LV) input
+PassignLVV(p:P,lv:LV,v:V) input
+PassignLVLV(p:P,lv0:LV,lv1:LV) input
+PextAssignLVV(p:P,lv:LV,v:V) input
+PextAssignLVLV(p:P,lv0:LV,lv1:LV) input
+
+PstrUpdLV(p:P,lv:LV) input
+PstrUpdS(p:P,s:F) input
+#lvStrP(p:P,lv:LV) output
+
+fsReachableM(m:M) output
+reachableClInitM(m:M)
+fsIM(i:I,m:M) output
+
+fsReachableI(i:I) 
+
+fsReachableT(t:T) 
+
+PPcallAssignVV(p0:P0,p1:P1,v0:V0,v1:V1) 
+PPcallAssignLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) 
+
+PPretAssignVV(p0:P0,p1:P1,v0:V0,v1:V1) 
+PPretAssignLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) 
+
+PPretArgsVV(p0:P0,p1:P1,v0:V0,v1:V1) 
+PPretArgsLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) 
+PPextRetArgsLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) 
+
+invPtsV(v:V) 
+PinvPtsLV(p:P,lv:LV) 
+
+fsVH(v:V,h:H) output
+PfsSH(p:P,s:F,h:H) output
+PfsLVH(p:P,lv:LV,h:H) output
+
+MM(m:M,n:M) output
+
+#sVPts(v:V,h:H) output
+#fVPts(v:V,h:H) output
+#gVPts(v:V,h:H) output
+
+
+###
+# Constraints
+###
+
+# reachable methods
+fsReachableM(0).
+fsReachableM(m) :- fsIM(_,m).
+fsReachableM(m) :- reachableClInitM(m).
+
+# reachable call sites
+fsReachableI(i) :- MI(m,i), fsReachableM(m).
+
+# call site resolution
+# virtual calls
+IH(i,h) :- fsReachableI(i), IinvkArg0(i,v), fsVH(v,h).
+fsIM(i,m) :- IH(i,h), IHM(i,h,m).
+# special calls
+fsIM(i,m) :- fsReachableI(i), specIM(i,m), IinvkArg0(i,v), fsVH(v,_). split
+# static calls
+fsIM(i,m) :- fsReachableI(i), statIM(i,m).
+
+# reachable types
+# 1. T is a class and an instance of T is created.
+# this handles both normal allocation and reflective allocation
+fsReachableT(t) :- MobjValAsgnInst(m,_,h), fsReachableM(m), HT(h,t).
+# 2. T is a class and a static method declared by T is invoked
+fsReachableT(t) :- fsReachableM(m), staticTM(t,m).
+# 3. A static field declared by T is assigned. 
+fsReachableT(t) :- MputStatFldInst(m,f,_), fsReachableM(m), staticTF(t,f).
+# 4. A static field declared by T is used and the reference to the
+#    field is not a compile-time constant.
+fsReachableT(t) :- MgetStatFldInst(m,_,f), fsReachableM(m), staticTF(t,f).
+# 5. Before a class is initialized, its direct superclass must be
+#    initialized.
+fsReachableT(t) :- classT(t), fsReachableT(s), sub(s,t).
+
+# reachable static initializers
+reachableClInitM(m) :- fsReachableT(t), clinitTM(t,m).
+
+# call and return edges
+PcallP(p0,p1) :- PI(p0,i), fsIM(i,m), MPhead(m,p1).
+PretP(p0,p1) :- PI(p,i), PP(p,p1), fsIM(i,m), MPtail(m,p0).
+PretP(p0,p1) :- reachableClInitM(m), MPtail(m,p0), MPhead(0,p), PP(p,p1).
+
+# call assignments
+IinvkAssignVVM(i,v0,v1,m) :- fsIM(i,m), MmethArg(m,z,v0), IinvkArg(i,z,v1).
+PPcallAssignVV(p0,p1,v0,v1) :- IinvkAssignVVM(i,v0,v1,m), PI(p0,i), MPhead(m,p1).
+PPcallAssignLVLV(p0,p1,lv0,lv1) :- PPcallAssignVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+PPcallAssignLVLV(p0,p1,lv0,lv1) :- PPcallAssignLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# return value assignments
+IretAssignVVM(i,v0,v1,m) :- fsIM(i,m), IinvkRet(i,z,v0), MmethRet(m,z,v1).
+PPretAssignVV(p0,p1,v0,v1) :- IretAssignVVM(i,v0,v1,m), MPtail(m,p0), PI(p1,i). 
+PPretAssignLVLV(p0,p1,lv0,lv1) :- PPretAssignVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+PPretAssignLVLV(p0,p1,lv0,lv1) :- PPretAssignLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# copy-back arguments
+PPretArgsVV(p0,p1,v0,v1) :- IinvkAssignVVM(i,v1,v0,m), MPtail(m,p0), PI(p1,i). split
+PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1), PliveV(p1,v0). split
+#PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsVV(p0,p1,v0,v1), mustSameValVLV(v0,lv), LVFLV(lv,f,lv0), VFLV(v1,f,lv1), PliveLV(p1,lv). split
+PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# modification through aliases
+PPextRetArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsLVLV(p0,p1,lv,lv1), aliasLVLV(lv,lv0), PliveLV(p1,lv0). split
+#PPextRetArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsLVLV(p0,p1,lv,lv1), aliasLVLV(lv,lv0), StatLV(lv0). split
+
+# strong updates
+#lvStrP(p,lv) :- PstrUpdLV(p,lv).
+#lvStrP(p,lv) :- PPretArgsLVLV(_,p,lv,_).
+#lvStrP(p,lv) :- lvStrP(p,lv0), lvReachable(lv0,lv).
+
+
+# invalid points-to relations
+#invPtsV(v) :- PinvV(_,v).
+#invPtsV(v) :- PassignVLV(p,v,lv), PinvPtsLV(p,lv).
+#
+#PinvPtsLV(p,lv) :- PinvLV(p0,lv), PP(p0,p).
+#PinvPtsLV(p,lv) :- PassignLVLV(p0,lv,lv0), PinvPtsLV(p0,lv0), PP(p0,p).
+#PinvPtsLV(p,lv) :- PextAssignLVLV(p0,lv,lv0), PinvPtsLV(p0,lv0), PP(p0,p). 
+#PinvPtsLV(p,lv) :- PPcallAssignLVLV(p0,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+#PinvPtsLV(p,lv) :- PPretAssignLVLV(p0,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+#PinvPtsLV(p,lv) :- PPretArgsLVLV(p0,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+#PinvPtsLV(p,lv) :- PPextRetArgsLVLV(p0,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+#
+#PinvPtsLV(p,lv) :- PinvPtsLV(p0,lv), !PstrUpdLV(p0,lv), PP(p0,p).
+#PinvPtsLV(p,lv) :- PPretArgsVV(_,p1,v0,v1), VFLV(v0,f,lv), !VFLV(v1,f,_), PP(p1,p). split
+
+# variable points-to
+fsVH(v,h) :- MobjValAsgnInst(m,v,h), fsReachableM(m).
+#fsVH(v,h) :- MobjValAsgnInst(m,v,h), reachableClInitM(m).
+#fsVH(v,h) :- invPtsV(v), VH(v,h).
+fsVH(v,h) :- PinvV(_,v), VH(v,h).
+fsVH(v,h) :- RPobjVarAsgnInst(_,v,v0), fsVH(v0,h), VHfilter(v,h). 
+fsVH(v,h) :- RPgetStatFldInst(p,v,s), PfsSH(p,s,h), VHfilter(v,h).
+fsVH(v,h) :- PassignVLV(p,v,lv), PfsLVH(p,lv,h), VH(v,h).
+fsVH(v,h) :- PPcallAssignVV(_,_,v,v0), fsVH(v0,h), VHfilter(v,h).
+fsVH(v,h) :- PPretAssignVV(_,_,v,v0), fsVH(v0,h), VHfilter(v,h).
+
+# static and lvalue points-to
+PfsSH(p,s,h) :- RPputStatFldInst(p0,s,v), fsVH(v,h), PP(p0,p).
+
+PfsLVH(p,lv,h) :- PinvLV(p0,lv), LVH(lv,h), PP(p0,p).
+PfsLVH(p,lv,h) :- PassignLVV(p0,lv,v), fsVH(v,h), PP(p0,p).
+PfsLVH(p,lv,h) :- PassignLVLV(p0,lv,lv0), PfsLVH(p0,lv0,h), PP(p0,p).
+PfsLVH(p,lv,h) :- PextAssignLVV(p0,lv,v), fsVH(v,h), PP(p0,p).
+PfsLVH(p,lv,h) :- PextAssignLVLV(p0,lv,lv0), PfsLVH(p0,lv0,h), PP(p0,p).
+PfsLVH(p,lv,h) :- PPcallAssignLVLV(p0,p1,lv,lv0), PfsLVH(p0,lv0,h), PP(p1,p).
+PfsLVH(p,lv,h) :- PPretAssignLVLV(p0,p1,lv,lv0), PfsLVH(p0,lv0,h), PP(p1,p).
+PfsLVH(p,lv,h) :- PPretArgsLVLV(p0,p1,lv,lv0), PfsLVH(p0,lv0,h), PP(p1,p). 
+PfsLVH(p,lv,h) :- PPextRetArgsLVLV(p0,p1,lv,lv0), PfsLVH(p0,lv0,h), PP(p1,p).
+
+# kill strong updates
+PfsLVH(p,lv,h) :- !PstrUpdLV(p0,lv), PfsLVH(p0,lv,h), PP(p0,p), PliveLV(p,lv). split
+PfsLVH(p,lv,h) :- !PstrUpdLV(p0,lv), PfsLVH(p0,lv,h), PP(p0,p), StatLV(lv). split
+PfsSH(p,s,h) :- !PstrUpdS(p0,s), PfsSH(p0,s,h), PP(p0,p). 
+
+# propagate static points-to through call-return
+PcallNextP(p0,p1) :- PcallP(p0,p), PP(p,p1).
+PfsSH(p,s,h) :- PfsSH(p0,s,h), PcallNextP(p0,p). 
+PfsSH(p,s,h) :- PfsSH(p0,s,h), PretP(p0,p).
+
+PfsLVH(p,lv,h) :- PfsLVH(p0,lv,h), StatLV(lv), PcallNextP(p0,p).
+PfsLVH(p,lv,h) :- PfsLVH(p0,lv,h), StatLV(lv), PretP(p0,p).
+
+MM(m,n) :- MI(m,i), fsIM(i,n).
+# final results
+#sVPts(v,h) :- fsVH(v,h), !VH(v,h).
+#gVPts(v,h) :- !fsVH(v,h), VH(v,h).
+#fVPts(v,h) :- fsVH(v,h), VH(v,h).

@@ -1,0 +1,42 @@
+package chord.analyses.lval;
+
+import java.util.Set;
+
+import joeq.Class.jq_Field;
+import joeq.Compiler.Quad.RegisterFactory.Register;
+import chord.project.Chord;
+import chord.project.ClassicProject;
+import chord.project.analyses.ProgramDom;
+import chord.util.tuple.object.Trio;
+
+@Chord(
+  name = "LV",
+  consumes = {"VLV", "SLV"}
+)
+
+public class DomLV extends ProgramDom<Lvalue> {
+  Set<Trio<jq_Field,jq_Field,StatLvalue>> sfLvRelSet;
+  Set<Trio<StatLvalue,jq_Field,StatLvalue>> slvLvRelSet;
+  Set<Trio<Register,jq_Field,VarLvalue>> vLvRelSet;
+  Set<Trio<VarLvalue,jq_Field,VarLvalue>> vlvLvRelSet;
+  
+  @Override
+  public void fill() {
+    DomVLV domVLV = (DomVLV) ClassicProject.g().getTrgt("VLV");
+    DomSLV domSLV = (DomSLV) ClassicProject.g().getTrgt("SLV");
+    
+    vLvRelSet = domVLV.vLvRelSet;
+    vlvLvRelSet = domVLV.lvLvRelSet;
+    sfLvRelSet = domSLV.sfLvRelSet;
+    slvLvRelSet = domSLV.lvLvRelSet;
+    
+    for(VarLvalue lv : domVLV)
+      add(lv);
+    for(StatLvalue lv : domSLV)
+      add(lv);
+  }
+  
+  public String toUniqueString(Lvalue lv) {
+    return lv + "!" + ((lv.isStaic())? ((StatLvalue)lv).getDeclaringClass() : ((VarLvalue)lv).getMethod());
+  }
+}

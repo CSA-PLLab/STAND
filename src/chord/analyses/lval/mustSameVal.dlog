@@ -1,0 +1,39 @@
+# name=mustSameValVLV-dlog
+
+.include "V.dom"
+.include "LV.dom"
+.include "F.dom"
+.include "P.dom"
+
+.bddvarorder P0_V0xV1xV2_LV0xLV1xLV2_F0xF1
+
+###
+# Relations
+###
+
+tempToVF(v0:V0,v1:V1,f:F) input
+tempToS(v:V,s:F) input
+PobjVarAsgnInst(p:P,u:V,v:V) input
+PgetInstFldInst(p:P,v0:V0,f:F,v1:V1) input
+VFLV(v:V,f:F,lv:LV) input
+SFLV(s:F0,f:F1,lv:LV) input
+LVFLV(lv0:LV,f:F,lv1:LV1) input
+
+mustSameValVV(u:V,v:V) output
+mustSameValVS(v:V,f:F) output
+mustSameValVLV(v:V,lv:LV) output
+
+###
+# Constraints
+###
+
+mustSameValVV(u,v) :- PobjVarAsgnInst(_,u,v).
+mustSameValVS(v,s) :- tempToS(v,s).
+mustSameValVLV(v,lv) :- tempToVF(v,v1,f), VFLV(v1,f,lv).
+mustSameValVLV(v,lv) :- PgetInstFldInst(_,v,f,v1), mustSameValVS(v1,s), SFLV(s,f,lv).
+mustSameValVLV(v,lv) :- PgetInstFldInst(_,v,f,v1), mustSameValVLV(v1,lv1), LVFLV(lv1,f,lv).
+
+mustSameValVV(u,v) :- mustSameValVLV(u,lv), mustSameValVLV(v,lv). # bad hack
+mustSameValVV(u,v) :- mustSameValVV(u,v0), mustSameValVV(v0,v).
+
+mustSameValVV(u,v) :- mustSameValVV(v,u).

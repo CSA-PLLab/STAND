@@ -1,0 +1,31 @@
+# name=initMap-dlog
+
+.include "V.dom"
+.include "I.dom"
+.include "P.dom"
+.include "H.dom"
+
+.bddvarorder P0_I0_V0xV1_H0
+
+###
+# Relations
+###
+
+initIV(i:I,v:V) input
+RPobjValAsgnInst(p:P,v:V,h:H) input
+RPobjVarAsgnInst(p:P,v0:V0,v1:V1) input
+PI(p:P,i:I) input
+
+IinitMapVV(i:I,v0:V0,v1:V1) output
+PinitMapVV(p:P,v0:V0,v1:V1) output
+VconsI(v:V,i:I) output
+VconsP(v:V,p:P) output
+
+###
+# Constraints
+###
+
+IinitMapVV(i,v0,v1) :- initIV(i,v0), RPobjVarAsgnInst(_,v0,v1), RPobjValAsgnInst(_,v1,_).
+PinitMapVV(p,v0,v1) :- PI(p,i), IinitMapVV(i,v0,v1).
+VconsI(v,i) :- IinitMapVV(i,_,v).
+VconsP(v,p) :- VconsI(v,i), PI(p,i).

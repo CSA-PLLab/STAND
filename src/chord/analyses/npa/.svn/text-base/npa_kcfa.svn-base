@@ -1,0 +1,32 @@
+# name=npa-fcfa-dlog
+
+.include "V.dom"
+.include "P.dom"
+.include "F.dom"
+.include "H.dom"
+.include "K.dom"
+.include "I.dom"
+.include "T.dom"
+.include "M.dom"
+.include "LV.dom"
+
+###
+# Relations
+###
+
+reachableCM(c:C,m:M) input # method m can be reached with context c
+reachableCP(c:C,p:P) # point p can be reached with context c
+
+CPnullV(c:C,p:P,v:V) output
+CPnullLV(c:C,p:P,lv:LV) output
+CPnullS(c:C,p:P,s:F) output
+
+###
+# Constraints
+###
+
+reachableCP()
+
+# when a variable may be null
+
+

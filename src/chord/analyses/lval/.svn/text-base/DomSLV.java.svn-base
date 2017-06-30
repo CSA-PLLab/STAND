@@ -1,0 +1,115 @@
+package chord.analyses.lval;
+
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+import joeq.Class.jq_Class;
+import joeq.Class.jq_Field;
+import joeq.Class.jq_Type;
+import chord.bddbddb.Rel.PairIterable;
+import chord.program.Program;
+import chord.project.Chord;
+import chord.project.ClassicProject;
+import chord.project.analyses.ProgramDom;
+import chord.project.analyses.ProgramRel;
+import chord.util.tuple.object.Pair;
+import chord.util.tuple.object.Trio;
+
+@Chord(
+  name = "SLV",
+  consumes = {"staticTF", "reachableT"}
+)
+
+public class DomSLV extends ProgramDom<StatLvalue> {
+  Set<Trio<jq_Field,jq_Field,StatLvalue>> sfLvRelSet;
+  Set<Trio<StatLvalue,jq_Field,StatLvalue>> lvLvRelSet;
+  private Program program;
+  
+  @Override
+  public void init() {        
+    sfLvRelSet = new HashSet<Trio<jq_Field,jq_Field,StatLvalue>>();
+    lvLvRelSet = new HashSet<Trio<StatLvalue,jq_Field,StatLvalue>>();
+    program = Program.g();
+  }
+  
+  public jq_Type getType(StatLvalue lv) {	
+    return lv.getType();
+  }
+  
+  @Override
+  public void fill() {	
+	ProgramRel reachableT = (ProgramRel) ClassicProject.g().getTrgt("reachableT");
+    ProgramRel relStatTF = (ProgramRel) ClassicProject.g().getTrgt("staticTF");
+    reachableT.load();
+	relStatTF.load();
+	
+	PairIterable<jq_Type, jq_Field> tuples = relStatTF.getAry2ValTuples();
+	for (Pair<jq_Type, jq_Field> p : tuples) {		
+		jq_Type c = (jq_Type) p.val0;
+		jq_Field sf = (jq_Field) p.val1;
+		if(reachableT.contains(c))	
+		    process(sf);				    
+	}			    			
+	relStatTF.close();
+	reachableT.close();
+  }
+  
+  private void process(jq_Field sf) {
+    jq_Type t = sf.getType();	  
+    if(!t.isReferenceType()) return;		
+    
+    if(!(t.isClassType())) return;		
+	
+    List<StatLvalue> nextlvs = new LinkedList<StatLvalue>();
+    
+    jq_Class cl = (jq_Class) program.getClass(t.toString());
+    if(cl == null) return;
+	jq_Field[] farr = cl.getInstanceFields();
+    
+    for(jq_Field f : farr) {
+      if(f.getType().isReferenceType()) {
+        StatLvalue newlv = new StatLvalue(sf, f);
+        if(add(newlv)) {	  		  
+          Trio<jq_Field,jq_Field,StatLvalue> apRel = new Trio<jq_Field,jq_Field,StatLvalue>(sf, f, newlv);
+          sfLvRelSet.add(apRel);
+          nextlvs.add(newlv);
+		}
+      }
+    }
+		  
+    List<StatLvalue> currlvs;
+  
+    for(int i = 1; i < Lvalue.maxLength; i++) {
+      currlvs = nextlvs;
+      nextlvs = new LinkedList<StatLvalue>();
+      for(StatLvalue clv : currlvs) {    		
+        jq_Type type = clv.getType();
+        assert(type.isReferenceType());
+        
+        if(type.isClassType()) {	        
+          cl = (jq_Class) program.getClass(type.toString());
+          if(cl == null) continue;
+          
+          farr = cl.getInstanceFields();	             
+         
+          for(jq_Field f : farr) {
+            if(f.getType().isReferenceType()) {
+              StatLvalue newlv = new StatLvalue(clv, f);
+              if(add(newlv)) {	
+ 	            Trio<StatLvalue,jq_Field,StatLvalue> apRel = new Trio<StatLvalue,jq_Field,StatLvalue>(clv, f, newlv);
+                lvLvRelSet.add(apRel);
+                nextlvs.add(newlv);
+              }
+            }	    	
+          }        	    			
+        }
+      }
+    }	  
+  }  
+  
+  public String toUniqueString(StatLvalue lv) {
+    return lv + "!" + lv.getDeclaringClass();
+  }
+}

@@ -1,0 +1,70 @@
+# name=PargRetAsgn-dlog
+
+.include "V.dom"
+.include "LV.dom"
+.include "I.dom"
+.include "Z.dom"
+.include "F.dom"
+.include "M.dom"
+.include "P.dom"
+
+.bddvarorder I0xM0_P0xP1_V0xV1_LV0xLV1_F0_Z0
+
+###
+# Relations
+###
+
+#StatLV(lv:LV) input
+
+IinvkArg(i:I0,z:Z0,v:V1) input
+IinvkRet(i:I,z:Z,v:V) input
+
+MmethArg(m:M0,z:Z0,v:V0) input
+MmethRet(m:M,z:Z,v:V1) input
+
+IM(i:I,m:M) input
+
+PI(p:P,i:I) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+
+VFLV(v:V,f:F,lv:LV) input
+LVFLV(lv0:LV,f:F,lv1:LV) input
+
+#aliasLVLV(lv0:LV,lv1:LV) input
+PliveV(p:P,v:V) input
+PliveLV(p:P,lv:LV) input
+# VreachableLV(v:V,lv:LV) input
+mustSameValVLV(v:V,lv:LV) input
+
+PPcallAsgnVV(p0:P0,p1:P1,v0:V0,v1:V1) output
+PPretAsgnVV(p0:P0,p1:P1,v0:V0,v1:V1) output
+
+PPretArgsVV(p0:P0,p1:P1,v0:V0,v1:V1)
+
+PPcallAsgnLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) output
+PPretAsgnLVLV(p0:P0,pq:P1,lv0:LV,lv1:LV) output
+PPretArgsLVLV(p0:P0,pq:P1,lv0:LV,lv1:LV) output
+#PPextRetArgsLVLV(p0:P0,p1:P1,lv0:LV,lv1:LV) output
+
+###
+# Constraints
+###
+
+PPcallAsgnVV(p0,p1,v0,v1) :- IM(i,m), MmethArg(m,z,v0), IinvkArg(i,z,v1), MPhead(m,p1), PI(p0,i). split
+PPcallAsgnLVLV(p0,p1,lv0,lv1) :- PPcallAsgnVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+PPcallAsgnLVLV(p0,p1,lv0,lv1) :- PPcallAsgnLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+PPretAsgnVV(p0,p1,v0,v1) :- IM(i,m), MmethRet(m,z,v1), IinvkRet(i,z,v0), MPtail(m,p0), PI(p1,i). split
+PPretAsgnLVLV(p0,p1,lv0,lv1) :- PPretAsgnVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+PPretAsgnLVLV(p0,p1,lv0,lv1) :- PPretAsgnLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+PPretArgsVV(p0,p1,v0,v1) :- IM(i,m), MmethArg(m,z,v1), IinvkArg(i,z,v0), MPtail(m,p0), PI(p1,i). split
+PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsVV(p0,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1), PliveV(p1,v0). split
+PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsVV(p0,p1,v0,v1), mustSameValVLV(v0,lv), LVFLV(lv,f,lv0), VFLV(v1,f,lv1), PliveLV(p1,lv). split
+PPretArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsLVLV(p0,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+#PPextRetArgsLVLV(p0,p1,lv0,lv1) :- PPretArgsLVLV(p0,p1,lv,lv1), aliasLVLV(lv,lv0), PliveLV(p1,lv0).
+#PPextRetArgsLVLV(p0,p1,lv0,lv1) :- PPextRetArgsLVLV(p0,p1,lv,lv1), aliasLVLV(lv,lv0), StatLV(lv0). split
+
+

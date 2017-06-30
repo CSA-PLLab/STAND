@@ -1,0 +1,84 @@
+# name=cslvaa-kcfa-dlog
+
+.include "P.dom"
+.include "V.dom"
+.include "LV.dom"
+.include "C.dom"
+.include "F.dom"
+
+.bddvarorder C0_P0_V0xV1_LV0xLV1_C1_F0xF1
+
+###
+# Relations
+###
+
+#MV(m:M,v:V) input
+#MLV(m:M,lv:LV) input
+
+PliveV(p:P,v:V) input
+PliveLV(p:P,lv:LV) input
+
+CVC(c0:C0,v:V,c1:C1) input
+FC(f:F,c:C) input
+CFC(c0:C0,f:F,c1:C1) input
+CLVC(c0:C0,lv:LV,c1:C1) input
+SLVC(lv:LV,c0:C0) input
+
+VFLV(v:V,f:F,lv:LV) input
+SFLV(s:F0,f:F1,lv:LV) input
+LVFLV(lv0:LV0,f:F,lv1:LV1) input
+
+sameScopeVV(v0:V0,v1:V1)
+sameScopeVLV(v:V,lv:LV) 
+sameScopeLVLV(lv0:LV0,lv1:LV1) 
+
+CsamePtsVV(c:C,v0:V0,v1:V1)
+CsamePtsVLV(c:C,v:V,lv:LV)
+CsamePtsVS(c:C,v:V,s:F)
+CsamePtsSLV(c:C,s:F,lv:LV)
+CsamePtsLVLV(c:C,lv0:LV0,lv1:LV1)
+samePtsSS(s0:F0,s1:F1)
+samePtsSLV(s:F,lv:LV)
+samePtsLVLV(lv0:LV0,lv1:LV1)
+
+CaliasLVLV(c:C,lv0:LV0,lv1:LV1) output
+#statAliasLVLV(lv0:LV0,lv1:LV1) output
+
+aliasLVLV(lv0:LV0,lv1:LV1) output
+
+###
+# Constraints
+###
+
+sameScopeVV(v0,v1) :- v0 != v1, PliveV(p,v0), PliveV(p,v1).
+sameScopeVLV(v,lv) :- PliveV(p,v), PliveLV(p,lv).
+sameScopeLVLV(lv0,lv1) :- lv0 != lv1, PliveLV(p,lv0), PliveLV(p,lv1).
+
+CsamePtsVV(c,v0,v1) :- sameScopeVV(v0,v1), CVC(c,v0,c0), CVC(c,v1,c0). # commutative
+CsamePtsVS(c,v,s) :- CVC(c,v,c0), FC(s,c0).
+CsamePtsVLV(c,v,lv) :- sameScopeVLV(v,lv), CVC(c,v,c0), CLVC(c,lv,c0). 
+CsamePtsVLV(c,v,lv) :- CVC(c,v,c0), SLVC(lv,c0). 
+CsamePtsSLV(c,s,lv) :- FC(s,c0), CLVC(c,lv,c0). 
+#samePtsSLV(s,lv) :- FC(s,c0), SaLVC(lv,c0).
+#samePtsSS(s0,s1) :- s0 != s1, FC(s0,c0), FC(s1,c0).
+CsamePtsLVLV(c,lv0,lv1) :- sameScopeLVLV(lv0,lv1), CLVC(c,lv0,c0), CLVC(c,lv1,c0). # commutative
+CsamePtsLVLV(c,lv0,lv1) :- CLVC(c,lv0,c0), SLVC(lv1,c0).
+CsamePtsLVLV(c,lv0,lv1) :- SLVC(lv0,c0), CLVC(c,lv1,c0).
+#samePtsLVLV(lv0,lv1) :- SaLVC(lv0,c0), SaLVC(lv1,c0). # commutative
+
+CaliasLVLV(c,lv0,lv1) :- CsamePtsVV(c,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsVS(c,v,s), VFLV(v,f,lv0), SFLV(s,f,lv1).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsVS(c,v,s), VFLV(v,f,lv1), SFLV(s,f,lv0).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsVLV(c,v,lv), VFLV(v,f,lv0), LVFLV(lv,f,lv1).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsVLV(c,v,lv), VFLV(v,f,lv1), LVFLV(lv,f,lv0).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsSLV(c,s,lv), SFLV(s,f,lv0), LVFLV(lv,f,lv1).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsSLV(c,s,lv), SFLV(s,f,lv1), LVFLV(lv,f,lv0).
+#statAliasLVLV(lv0,lv1) :- samePtsSLV(s,lv), SFLV(s,f,lv0), LVFLV(lv,f,lv1).
+#statAliasLVLV(lv0,lv1) :- samePtsSLV(s,lv), SFLV(s,f,lv1), LVFLV(lv,f,lv0).
+#statAliasLVLV(lv0,lv1) :- samePtsSS(s0,s1), SFLV(s0,f,lv0), SFLV(s1,f,lv1).
+CaliasLVLV(c,lv0,lv1) :- CsamePtsLVLV(c,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+#statAliasLVLV(lv0,lv1) :- samePtsLVLV(lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+aliasLVLV(lv0,lv1) :- CaliasLVLV(_,lv0,lv1).
+#aliasLVLV(lv0,lv1) :- statAliasLVLV(lv0,lv1).
+

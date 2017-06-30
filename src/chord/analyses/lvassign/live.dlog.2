@@ -1,0 +1,66 @@
+# name=live-dlog
+
+.include "V.dom"
+.include "M.dom"
+.include "H.dom"
+.include "I.dom"
+.include "Z.dom"
+.include "F.dom"
+.include "P.dom"
+.include "LV.dom"
+
+#.bddvarorder M0_P0xP1_I0_Z0_V0xV1_LV0_F0_H0
+.bddvarorder I0xM0_P0xP1_V0xV1_LV0_H0_F0_Z0
+###
+# Relations
+###
+
+RPobjValAsgnInst(p:P,v:V,h:H) input
+RPobjVarAsgnInst(p:P,v0:V0,v1:V1) input
+RPgetInstFldInst(p:P,v0:V0,f:F,v1:V1) input
+RPgetStatFldInst(p:P,v:V,f:F) input
+RPputInstFldInst(p:P,v0:V0,f:F,v1:V1) input
+RPputStatFldInst(p:P,f:F,v:V) input
+MmethArg(m:M,z:Z,v:V) input
+MmethRet(m:M,z:Z,v:V1) input
+IinvkArg(i:I,z:Z,v:V1) input
+IinvkRet(i:I,z:Z,v:V) input
+
+VreachableLV(v:V,lv:LV) input
+
+reachableM(m:M) input
+reachableI(i:I) input
+
+PP(p0:P0,p1:P1) input
+PI(p:P,i:I) input
+MPtail(m:M,p:P) input
+
+PuseV(p:P,v:V) 
+PdefV(p:P,v:V) 
+
+PliveV(p:P,v:V) output
+PliveLV(p:P,v:LV) output
+
+###
+# Constraints
+###
+
+PuseV(p,v) :- reachableM(m), MmethArg(m,_,v), MPtail(m,p).
+PuseV(p,v) :- reachableM(m), MmethRet(m,_,v), MPtail(m,p).
+PuseV(p,v) :- RPobjVarAsgnInst(p,_,v).
+PuseV(p,v) :- RPgetInstFldInst(p,_,_,v).
+PuseV(p,v) :- RPputStatFldInst(p,_,v).
+PuseV(p,v) :- RPputInstFldInst(p,v,_,_).
+PuseV(p,v) :- RPputInstFldInst(p,_,_,v).
+PuseV(p,v) :- reachableI(i), IinvkArg(i,_,v), PI(p,i).
+
+PdefV(p,v) :- RPobjVarAsgnInst(p,v,_).
+PdefV(p,v) :- RPobjValAsgnInst(p,v,_).
+PdefV(p,v) :- RPgetInstFldInst(p,v,_,_).
+PdefV(p,v) :- RPgetStatFldInst(p,v,_).
+PdefV(p,v) :- reachableI(i), IinvkRet(i,_,v), PI(p,i).
+
+PliveV(p,v) :- PuseV(p,v).
+PliveV(p,v) :- PliveV(p0,v), PP(p,p0), !PdefV(p,v). split
+
+PliveLV(p,lv) :- PliveV(p,v), VreachableLV(v,lv).

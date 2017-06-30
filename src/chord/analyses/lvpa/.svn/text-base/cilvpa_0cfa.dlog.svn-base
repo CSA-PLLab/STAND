@@ -1,0 +1,29 @@
+# name=cilvpa-0cfa-dlog
+
+.include "V.dom"
+.include "LV.dom"
+.include "F.dom"
+.include "H.dom"
+
+.bddvarorder V0_LV0xLV1_H0xH1_F0xF1
+###
+# Relations
+###
+
+VH(v:V0,h:H0) input
+FH(s:F,h:H0) input
+HFH(h0:H0,f:F,h1:H1) input
+VFLV(v:V0,f:F,lv:LV) input
+SFLV(s:F,f:F,lv:LV) input
+LVFLV(lv0:LV0,f:F,lv1:LV1) input
+
+LVH(lv:LV,h:H) output
+
+###
+# Constraints
+###
+
+LVH(lv,h) :- VH(v,h0), HFH(h0,f,h), VFLV(v,f,lv).
+LVH(lv,h) :- FH(s,h0), HFH(h0,f,h), SFLV(s,f,lv).
+LVH(lv,h) :- LVH(lv0,h0), LVFLV(lv0,f,lv), HFH(h0,f,h).
+

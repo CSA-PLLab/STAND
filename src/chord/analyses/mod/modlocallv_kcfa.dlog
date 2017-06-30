@@ -1,0 +1,62 @@
+# name=modlocallv-kcfa-dlog
+
+.include "C.dom"
+.include "I.dom"
+.include "LV.dom"
+.include "P.dom"
+.include "V.dom"
+.include "H.dom"
+.include "F.dom"
+.include "M.dom"
+.include "Z.dom"
+
+.bddvarorder C0xC1xI0xP0_Z0_M0_V0xV1_LV0_F0_LV1_H0
+
+###
+# Relations
+###
+
+CMmodHF(c:C,m:M,h:H,f:F) input
+CICM(c:C,i:I,d:C,m:M) input
+CVH(c:C,v:V,h:H) input
+CLVH(c:C,lv:LV,h:H) input
+PliveLV(p:P,lv:LV) input
+PI(p:P,i:I) input
+
+VFLV(v:V,f:F,lv:LV) input
+LVFLV(lv0:LV,f:F,lv1:LV) input
+
+IinvkArg(i:I,z:Z,v:V1) input
+
+VreachableLV(v:V,lv:LV) input
+LVreachableLV(lv0:LV,lv1:LV) input
+mustSameValVLV(v:V,lv:LV) input
+VconsI(v:V,i:I) input
+
+CImodLV(c:C,i:I,lv:LV) output
+CPmodLV(c:C,p:P,lv:LV) output #all lvalues that can be modified
+CPnonmodargLV(c:C,p:P,lv:LV) output #argument lvalues that are not modified
+CPmodargLV(c:C,p:P,lv:LV) output #argument lvalues that can be modified
+CPaliasmodLV(c:C,p:P,lv:LV) output #non-argument lvalues that can be modified
+
+###
+# Constraints
+###
+
+IliveLV(i,lv) :- PliveLV(p,lv), PI(p,i).
+
+CImodLV(c,i,lv) :- CICM(c,i,d,m), IliveLV(i,lv), CMmodHF(d,m,h,f), CVH(c,v,h), VFLV(v,f,lv). split
+CImodLV(c,i,lv) :- CICM(c,i,d,m), IliveLV(i,lv), CMmodHF(d,m,h,f), CLVH(c,lv0,h), LVFLV(lv0,f,lv). split
+
+CPmodLV(c,p,lv) :- PI(p,i), CImodLV(c,i,lv).
+
+PargLV(p,lv) :- IinvkArg(i,_,v), PI(p,i), VreachableLV(v,lv).
+PargLV(p,lv) :- IinvkArg(i,_,v), PI(p,i), mustSameValVLV(v,lv0), LVreachableLV(lv0,lv).
+PargLV(p,lv) :- VconsI(v,i), PI(p,i), VreachableLV(v,lv).
+CPnonmodargLV(c,p,lv) :- PargLV(p,lv), !CPmodLV(c,p,lv).
+
+CPmodargLV(c,p,lv) :- CPmodLV(c,p,lv), PargLV(p,lv).
+
+# modification through aliases
+CPaliasmod(c,p,lv) :- CPmodLV(c,p,lv), !PargLV(p,lv).
+

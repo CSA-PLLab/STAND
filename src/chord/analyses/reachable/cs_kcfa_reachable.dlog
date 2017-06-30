@@ -1,0 +1,28 @@
+# name=cs-kcfa-reachable-dlog
+
+.include "C.dom"
+.include "I.dom"
+.include "M.dom"
+.include "P.dom"
+
+.bddvarorder I0xM0_C0_P0 
+
+###
+# Relations
+###
+
+reachableCM(c:C,m:M) input
+reachableCI(c:C,i:I) input
+MP(m:M,p:P) input
+
+reachableM(m:M) output
+reachableI(i:I) output
+reachableP(p:P) output
+
+###
+# Constraints
+###
+
+reachableM(m) :- reachableCM(_,m).
+reachableI(i) :- reachableCI(_,i).
+reachableP(p) :- reachableM(m), MP(m,p).

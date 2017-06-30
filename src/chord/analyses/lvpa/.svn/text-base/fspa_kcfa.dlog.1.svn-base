@@ -1,0 +1,174 @@
+# name=fspa-kcfa-dlog
+
+.include "F.dom"
+.include "H.dom"
+.include "I.dom"
+.include "M.dom"
+.include "T.dom"
+.include "V.dom"
+.include "LV.dom"
+.include "C.dom"
+.include "Z.dom"
+
+.bddvarorder F0_I0xM0_T0_P0xP1_V0xV1_LV0xLV1_T1_H0_C0xC1_Z0 
+
+###
+# Relations
+###
+
+MI(m:M,i:I) input
+PI(p:P,i:I) input
+IinvkArg0(i:I,v:V) input
+IinvkArg(i:I,z:Z,v:V) input
+IinvkRet(i:I,z:Z,v:V) input
+MmethArg(m:M,z:Z,v:V) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+
+HT(h:H,t:T) input
+classT(t:T) input
+sub(t0:T1,t1:T0) input
+
+specIM(i:I,m:M) input
+statIM(i:I,m:M) input
+
+staticTM(t:T,m:M) input
+staticTF(t:T,f:F) input
+
+clinitTM(t:T,m:M) input
+
+IHM(i:I,h:H,m:M) input
+CIH(c:C,i:I,h:H)
+CIC(c:C,i:I,d:C) input
+
+MobjValAsgnInst(m:M,v:V,h:H) input
+MputStatFldInst(m:M,f:F,v:V) input
+MgetStatFldInst(m:M,v:V,f:F) input
+
+VFLV(v:V,f:F,lv:LV) input
+LVFLV(lv0:LV,f:F,lv1:LV) input
+
+fsCICM(c0:C,i:I,c1:C,m:M)
+reachableClInitM(m:M)
+fsReachableT(t:T)
+fsReachableCM(c:C,m:M)
+fsReachableCI(c:C,i:I)
+
+CfsVH(c:C,v:V,h:H) output
+CPfsSH(c:C,p:P,s:F,h:H) output
+CPfsLVH(c:C,p:P,lv:LV,h:H) output
+
+###
+# Constraints
+###
+
+# reachable methods
+fsReachableCM(0,0).
+fsReachableCM(c,m) :- fsCICM(_,_,c,m).
+fsReachableCM(0,m) :- reachableClInitM(m).
+fsReachableM(m) :- fsReachableCM(_,m).
+
+# reachable static initializers
+reachableClInitM(m) :- fsReachableT(t), clinitTM(t,m).
+
+# reachable call sites
+fsReachableCI(c,i) :- MI(m,i), fsReachableCM(c,m).
+
+# call site resolution
+CIH(c,i,h) :- IinvkArg0(i,v), CfsVH(c,v,h).
+
+# virtual calls
+fsCICM(c,i,d,m) :- fsReachableCI(c,i), CIH(c,i,h), IHM(i,h,m), CIC(c,i,d).
+# special calls
+fsCICM(c,i,d,m) :- fsReachableCI(c,i), specIM(i,m), CIH(c,i,_), CIC(c,i,d).
+# static calls
+fsCICM(c,i,d,m) :- fsReachableCI(c,i), statIM(i,m), CIC(c,i,d).
+
+# reachable types
+# 1. T is a class and an instance of T is created.
+# this handles both normal allocation and reflective allocation
+
+fsReachableT(t) :- fsReachableM(m), MobjValAsgnInst(m,_,h), HT(h,t).
+# 2. T is a class and a static method declared by T is invoked
+fsReachableT(t) :- fsReachableM(m), staticTM(t,m).
+# 3. A static field declared by T is assigned. 
+fsReachableT(t) :- fsReachableM(m), MputStatFldInst(m,f,_), staticTF(t,f).
+# 4. A static field declared by T is used and the reference to the
+#    field is not a compile-time constant.
+fsReachableT(t) :- fsReachableM(m), MgetStatFldInst(m,_,f), staticTF(t,f).
+# 5. Before a class is initialized, its direct superclass must be
+#    initialized.
+fsReachableT(t) :- classT(t), fsReachableT(s), sub(s,t).
+
+# call assignments
+CIinvkAssignVVCM(c,i,v0,v1,d,m) :- fsCICM(c,i,d,m), MmethArg(m,z,v0), IinvkArg(i,z,v1).
+CPCPcallAssignVV(c,p0,d,p1,v0,v1) :- CIinvkAssignVVCM(c,i,v0,v1,d,m), PI(p0,i), MPhead(m,p1).
+CPCPcallAssignLVLV(c,p0,d,p1,lv0,lv1) :- CPCPcallAssignVV(c,p0,d,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+CPCPcallAssignLVLV(c,p0,d,p1,lv0,lv1) :- CPCPcallAssignLVLV(c,p0,d,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# return value assignments
+CIretAssignVVCM(c,i,v0,v1,d,m) :- fsCICM(c,i,d,m), IinvkRet(i,z,v0), MmethRet(m,z,v1).
+CPCPretAssignVV(c,p0,d,p1,v0,v1) :- CIretAssignVVCM(d,i,v0,v1,c,m), MPtail(m,p0), PI(p1,i). 
+CPCPretAssignLVLV(c,p0,d,p1,lv0,lv1) :- CPCPretAssignVV(c,p0,d,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1).
+CPCPretAssignLVLV(c,p0,d,p1,lv0,lv1) :- CPCPretAssignLVLV(c,p0,d,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# copy-back arguments
+CPCPretArgsVV(c,p0,d,p1,v0,v1) :- CIinvkAssignVVCM(d,i,v1,v0,c,m), MPtail(m,p0), PI(p1,i). split
+CPCPretArgsLVLV(c,p0,d,p1,lv0,lv1) :- CPCPretArgsVV(c,p0,d,p1,v0,v1), VFLV(v0,f,lv0), VFLV(v1,f,lv1), PliveV(p1,v0). split
+CPCPretArgsLVLV(c,p0,d,p1,lv0,lv1) :- CPCPretArgsLVLV(c,p0,d,p1,lv2,lv3), LVFLV(lv2,f,lv0), LVFLV(lv3,f,lv1).
+
+# modification through aliases
+CPCPextRetArgsLVLV(c,p0,d,p1,lv0,lv1) :- CPCPretArgsLVLV(c,p0,d,p1,lv,lv1), CaliasLVLV(d,lv,lv0), PliveLV(p1,lv0). split
+
+# invalid points-to relations
+invPtsV(v) :- PinvV(_,v).
+invPtsV(v) :- PassignVLV(p,v,lv), PinvPtsLV(p,lv).
+
+PinvPtsLV(p,lv) :- PinvLV(p0,lv), PP(p0,p).
+PinvPtsLV(p,lv) :- PassignLVLV(p0,lv,lv0), PinvPtsLV(p0,lv0), PP(p0,p).
+PinvPtsLV(p,lv) :- CPextAssignLVLV(_,p0,lv,lv0), PinvPtsLV(p0,lv0), PP(p0,p). 
+PinvPtsLV(p,lv) :- CPCPcallAssignLVLV(_,p0,_,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+PinvPtsLV(p,lv) :- CPCPretAssignLVLV(_,p0,_,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+PinvPtsLV(p,lv) :- CPCPretArgsLVLV(_,p0,_,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+PinvPtsLV(p,lv) :- CPCPextRetArgsLVLV(_,p0,_,p1,lv,lv0), PinvPtsLV(p0,lv0), PP(p1,p).
+
+PinvPtsLV(p,lv) :- PinvPtsLV(p0,lv), !PstrUpdLV(p0,lv), PP(p0,p).
+
+# variable points-to
+CfsVH(c,v,h) :- MobjValAsgnInst(m,v,h), fsReachableCM(c,m).
+CfsVH(c,v,h) :- invPtsV(v), CVH(c,v,h).
+CfsVH(c,v,h) :- RPobjVarAsgnInst(_,v,v0), CfsVH(c,v0,h), VHfilter(v,h). 
+CfsVH(c,v,h) :- RPgetStatFldInst(p,v,s), CPfsSH(c,p,s,h), VHfilter(v,h).
+CfsVH(c,v,h) :- PassignVLV(p,v,lv), CPfsLVH(c,p,lv,h), CVH(c,v,h).
+CfsVH(c,v,h) :- CPCPcallAssignVV(d,_,c,_,v,v0), CfsVH(d,v0,h), VHfilter(v,h).
+CfsVH(c,v,h) :- CPCPretAssignVV(d,_,c,_,v,v0), CfsVH(d,v0,h), VHfilter(v,h).
+
+# static and lvalue points-to
+CPfsSH(c,p,s,h) :- RPputStatFldInst(p0,s,v), CfsVH(c,v,h), PP(p0,p).
+
+CPfsLVH(c,p,lv,h) :- PassignLVV(p0,lv,v), CfsVH(c,v,h), PP(p0,p).
+CPfsLVH(c,p,lv,h) :- PassignLVLV(p0,lv,lv0), CPfsLVH(c,p0,lv0,h), PP(p0,p).
+CPfsLVH(c,p,lv,h) :- CPextAssignLVV(c,p0,lv,v), CfsVH(c,v,h), PP(p0,p).
+CPfsLVH(c,p,lv,h) :- CPextAssignLVLV(c,p0,lv,lv0), CPfsLVH(c,p0,lv0,h), PP(p0,p).
+CPfsLVH(c,p,lv,h) :- CPCPcallAssignLVLV(d,p0,c,p1,lv,lv0), CPfsLVH(d,p0,lv0,h), PP(p1,p).
+CPfsLVH(c,p,lv,h) :- CPCPretAssignLVLV(d,p0,c,p1,lv,lv0), CPfsLVH(d,p0,lv0,h), PP(p1,p).
+CPfsLVH(c,p,lv,h) :- CPCPretArgsLVLV(d,p0,c,p1,lv,lv0), CPfsLVH(d,p0,lv0,h), PP(p1,p). 
+CPfsLVH(c,p,lv,h) :- CPCPextRetArgsLVLV(d,p0,c,p1,lv,lv0), CPfsLVH(d,p0,lv0,h), PP(p1,p).
+
+# kill strong updates
+CPfsLVH(c,p,lv,h) :- !PstrUpdLV(p0,lv), CPfsLVH(c,p0,lv,h), PP(p0,p), PliveLV(p,lv). split
+CPfsLVH(c,p,lv,h) :- !PstrUpdLV(p0,lv), CPfsLVH(c,p0,lv,h), PP(p0,p), StatLV(lv). split
+CPfsSH(c,p,s,h) :- !PstrUpdS(p0,s), CPfsSH(c,p0,s,h), PP(p0,p).
+
+# call and return edges
+CPcallCP(c,p0,d,p1) :- PI(p0,i), fsCICM(c,i,d,m), MPhead(m,p1).
+CPretCP(c,p0,d,p1) :- PI(p,i), PP(p,p1), fsCICM(d,i,c,m), MPtail(m,p0).
+CPretCP(0,p0,0,p1) :- reachableClInitM(m), MPtail(m,p0), MPhead(0,p), PP(p,p1).
+CPcallNextCP(c,p0,d,p1) :- CPcallCP(c,p0,d,p), PP(p,p1).
+
+# propagate static points-to through call-return
+CPfsSH(c,p,s,h) :- CPfsSH(d,p0,s,h), CPcallNextCP(d,p0,c,p). 
+CPfsSH(c,p,s,h) :- CPfsSH(d,p0,s,h), CPretCP(d,p0,c,p).
+
+CPfsLVH(c,p,lv,h) :- CPfsLVH(d,p0,lv,h), StatLV(lv), CPcallNextCP(d,p0,c,p).
+CPfsLVH(c,p,lv,h) :- CPfsLVH(d,p0,lv,h), StatLV(lv), CPretCP(d,p0,c,p).

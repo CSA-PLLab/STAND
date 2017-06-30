@@ -1,0 +1,35 @@
+# name=live-dlog
+
+.include "V.dom"
+.include "M.dom"
+.include "P.dom"
+.include "LV.dom"
+
+#.bddvarorder M0_P0xP1_I0_Z0_V0xV1_LV0_F0_H0
+.bddvarorder M0_P0_V0_LV0
+
+###
+# Relations
+###
+
+MV(m:M,v:V) input
+VreachableLV(v:V,lv:LV) input
+
+reachableM(m:M) input
+
+MP(m:M,p:P) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+
+PliveV(p:P,v:V) output
+PliveLV(p:P,v:LV) output
+
+###
+# Constraints
+###
+
+PliveV(p,v) :- reachableM(m), MV(m,v), MP(m,p).
+PliveV(p,v) :- reachableM(m), MV(m,v), MPhead(m,p).
+PliveV(p,v) :- reachableM(m), MV(m,v), MPtail(m,p).
+
+PliveLV(p,lv) :- PliveV(p,v), VreachableLV(v,lv).

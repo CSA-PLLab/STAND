@@ -1,0 +1,30 @@
+# name=csmod-kcfa-dlog
+
+.include "C.dom"
+.include "M.dom"
+.include "H.dom"
+.include "V.dom"
+.include "F.dom"
+.include "P.dom"
+
+.bddvarorder C0_M0_P0_C1_M1_V0_H0_F0_V1
+
+###
+# Relations
+###
+CVH(c:C,v:V,h:H) input
+CMCM(c:C,m:M,d:C,n:M) input
+MP(m:M,p:P) input
+
+MputInstFldInst(m:M,v0:V,f:F,v1:V) input
+PputInstFldNullInst(p:P,v:V,f:F) input
+
+CMmodHF(c:C,m:M,h:H,f:F) output
+
+###
+# Constraints
+###
+
+CMmodHF(c,m,h,f) :- MputInstFldInst(m,v,f,_), CVH(c,v,h).
+CMmodHF(c,m,h,f) :- MP(m,p), PputInstFldNullInst(p,v,f), CVH(c,v,h).
+CMmodHF(c,m,h,f) :- CMCM(c,m,d,n), CMmodHF(d,n,h,f).

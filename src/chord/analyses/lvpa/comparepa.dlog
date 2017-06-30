@@ -1,0 +1,51 @@
+# name=comparepa-dlog
+
+.include "V.dom"
+.include "P.dom"
+.include "H.dom"
+.include "C.dom"
+.include "T.dom"
+.include "M.dom"
+
+.bddvarorder C0_M0_P0_V0_T0_H0_T1
+
+
+###
+# Relations
+###
+
+VH(v:V,h:H) input
+CfsVH(c:C,v:V,h:H) input
+CVH(c0:C,v:V,h:H) input
+#fsReachableT(t:T) input
+#fsReachableCM(c:C,m:M) input
+#reachableCM(c:C,m:M) input
+#reachableT(t:T) input
+#PderefV(p:P,v:V) input
+
+#derefV(v:V)
+
+#derefVH(v:V,h:H) output
+#fsDerefVH(v:V,h:H) output
+
+oVH(v:V,h:H) output
+csVH(v:V,h:H) output
+fsVH(v:V,h:H) output
+#fsT(t:T) output
+#fsM(m:M) output
+
+###
+# Constraints
+###
+
+#derefV(v) :- PderefV(_,v).
+#
+#derefVH(v,h) :- derefV(v), VH(v,h).
+#fsDerefVH(v,h) :- derefV(v), fsVH(v,h).
+oVH(v,h) :- VH(v,h).
+csVH(v,h) :- CVH(_,v,h).
+fsVH(v,h) :- CfsVH(_,v,h).
+#fsT(t) :- reachableT(t), !fsReachableT(t).
+#fsRM(m) :- fsReachableCM(_,m).
+#csRM(m) :- reachableCM(_,m).
+#fsM(m) :- csRM(m), !fsRM(m).

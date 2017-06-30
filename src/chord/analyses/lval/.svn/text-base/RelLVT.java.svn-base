@@ -1,0 +1,18 @@
+package chord.analyses.lval;
+
+import chord.project.Chord;
+import chord.project.analyses.ProgramRel;
+
+@Chord(
+  name = "LVT",
+  sign = "LV0,T0:LV0_T0"	  
+)
+
+public class RelLVT extends ProgramRel {
+  @Override
+  public void fill() {
+	DomLV domLV = (DomLV) doms[0];
+	for(Lvalue lv : domLV) 
+      add(lv, lv.getType());	  	
+  }
+}

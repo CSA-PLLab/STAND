@@ -1,0 +1,31 @@
+# name=reachableLV-dlog
+
+.include "LV.dom"
+.include "F.dom"
+.include "V.dom"
+
+.bddvarorder V0_LV0xLV1_F0xF1
+
+###
+# Relations
+###
+VFLV(v:V,f:F,lv:LV) input
+SFLV(s:F0,f:F1,lv:LV) input
+LVFLV(lv0:LV0,f:F,lv1:LV1) input
+
+VreachableLV(v:V,lv:LV) output
+SreachableLV(s:F,lv:LV) output
+LVreachableLV(lv0:LV0,lv1:LV1) output
+
+###
+# Constraints
+###
+
+LVreachableLV(lv0,lv1) :- LVFLV(lv0,_,lv1).
+LVreachableLV(lv0,lv1) :- LVreachableLV(lv0,lv), LVFLV(lv,_,lv1).
+
+VreachableLV(v,lv) :- VFLV(v,_,lv).
+VreachableLV(v,lv) :- VreachableLV(v,lv0), LVreachableLV(lv0,lv).
+
+SreachableLV(s,lv) :- SFLV(s,_,lv).
+SreachableLV(s,lv) :- SreachableLV(s,lv0), LVreachableLV(lv0,lv).

@@ -1,0 +1,124 @@
+package chord.analyses.lval;
+
+import joeq.Class.jq_Class;
+import joeq.Class.jq_Field;
+import joeq.Class.jq_Method;
+import joeq.Class.jq_Type;
+import joeq.Compiler.Quad.RegisterFactory.Register;
+import chord.analyses.var.DomV;
+import chord.bddbddb.Dom;
+import chord.bddbddb.Rel.PairIterable;
+import chord.program.Program;
+import chord.project.Chord;
+import chord.project.ClassicProject;
+import chord.project.analyses.ProgramDom;
+import chord.project.analyses.ProgramRel;
+import chord.util.tuple.object.Pair;
+import chord.util.tuple.object.Trio;
+
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+@Chord(
+  name = "VLV",
+  consumes = {"VT", "reachableM"}
+)
+
+public class DomVLV extends ProgramDom<VarLvalue> {    
+  Set<Trio<Register,jq_Field,VarLvalue>> vLvRelSet;
+  Set<Trio<VarLvalue,jq_Field,VarLvalue>> lvLvRelSet;
+  private Program program;
+
+  @Override
+  public void init() {    
+    vLvRelSet = new HashSet<Trio<Register,jq_Field,VarLvalue>>();
+    lvLvRelSet = new HashSet<Trio<VarLvalue,jq_Field,VarLvalue>>();
+    program = Program.g();
+  }
+
+  public jq_Method getMethod(VarLvalue lv) {    
+	return lv.getMethod();
+  }
+  
+  public jq_Type getType(VarLvalue lv) {	
+	return lv.getType();
+  }
+  
+  @SuppressWarnings("unchecked")
+  @Override
+  public void fill() {	
+	ProgramRel reachableM = (ProgramRel) ClassicProject.g().getTrgt("reachableM");
+    ProgramRel relVT = (ProgramRel) ClassicProject.g().getTrgt("VT");
+    Dom[] doms = relVT.getDoms();
+    DomV domV = (DomV) doms[0];
+    reachableM.load();
+	relVT.load();	  
+	PairIterable<Register, jq_Type> tuples = relVT.getAry2ValTuples();	
+	for (Pair<Register, jq_Type> p : tuples) {		
+	  Register v = (Register) p.val0;
+	  jq_Method m = domV.getMethod(v);
+	  jq_Type t = (jq_Type) p.val1;
+	  if(reachableM.contains(m))	
+	    process(v, m, t);		
+	    
+	}		
+	relVT.close();	
+	reachableM.close();
+  }  
+  
+  private void process(Register v, jq_Method m, jq_Type t) {
+	
+	if(!t.isReferenceType()) return;
+	
+    if(!(t instanceof jq_Class)) return;
+	
+	List<VarLvalue> nextlvs = new LinkedList<VarLvalue>();
+  	
+	jq_Class cl = (jq_Class) program.getClass(t.toString());
+    if(cl == null) return;
+	jq_Field[] farr = cl.getInstanceFields();
+	for(jq_Field f : farr) {
+  	  if(f.getType().isReferenceType()) {
+  	    VarLvalue newlv = new VarLvalue(m, v, f);
+  	    if(add(newlv)) {  		  
+  		  Trio<Register,jq_Field,VarLvalue> apRel = new Trio<Register,jq_Field,VarLvalue>(v, f, newlv);
+  		  vLvRelSet.add(apRel);
+  		  nextlvs.add(newlv);
+  		}
+  	  }
+  	}
+			    
+	List<VarLvalue> currlvs;
+	    
+	for(int i = 1; i < Lvalue.maxLength; i++) {
+	  currlvs = nextlvs;
+	  nextlvs = new LinkedList<VarLvalue>();
+	  for(VarLvalue clv : currlvs) {    		
+	    jq_Type type = clv.getType();
+	    assert(type.isReferenceType());
+	    if(type.isClassType()) {	        	      
+	      cl = (jq_Class) program.getClass(type.toString());
+	      if(cl == null) continue;
+	      farr = cl.getInstanceFields();
+	      
+	      for(jq_Field f : farr) {
+	        if(f.getType().isReferenceType()) {
+	          VarLvalue newlv = new VarLvalue(clv, f);
+	    	  if(add(newlv)) {	    	    	    	    
+	    	    Trio<VarLvalue,jq_Field,VarLvalue> apRel = new Trio<VarLvalue,jq_Field,VarLvalue>(clv, f, newlv);
+	    	    lvLvRelSet.add(apRel);
+	    	    nextlvs.add(newlv);
+	    	  }
+	        }
+	      }	    	
+	    }	    	    			
+	  }
+	}		
+  }
+  
+  public String toUniqueString(VarLvalue lv) {
+    return lv + "!" + getMethod(lv);
+  }
+}

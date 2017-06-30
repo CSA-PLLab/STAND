@@ -1,0 +1,166 @@
+# name=npa-kcfa-dlog
+
+.include "V.dom"
+.include "P.dom"
+.include "I.dom"
+.include "C.dom"
+.include "M.dom"
+.include "H.dom"
+.include "F.dom"
+.include "K.dom"
+.include "LV.dom"
+
+.bddvarorder I0xM0_P0xP1_V0xV1_LV0xLV1_F0_H0_C0xC1_K0
+
+###
+# Relations
+###
+
+MP(m:M,p:P) input
+PP(p0:P0,p1:P1) input
+PI(p:P,i:I) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+reachableCM(c:C,m:M) input
+
+CVC(c:C,v:V,d:C) input
+CICM(c:C,i:I,d:C,m:M) input
+CPcallCP(c0:C,p0:P,c1:C,p1:P)
+CPretCP(c0:C,p0:P,c1:C,p1:P)
+
+reachableCP(c:C,p:P) 
+
+StatLV(lv:LV) input
+VreachableLV(v:V,lv:LV) input
+VFLV(v:V,f:F,lv:LV) input
+
+PliveV(p:P,v:V) input
+PliveLV(p:P,lv:LV) input
+
+RPobjNullAsgnInst(p:P,v:V) input
+RPobjVarAsgnInst(p:P,v0:V0,v1:V1) input
+RPobjValAsgnInst(p:P,v:V,h:H) input
+
+RPgetStatFldInst(p:P,v:V,s:F) input
+RPputStatFldNullInst(p:P,s:F) input
+RPputStatFldInst(p:P,s:F,v:V)  input
+RPputInstFldNullInst(p:P,v:V,f:F) input
+RPgetInstFldInst(p:P,u:V,f:F,v:V) input
+
+PinvV(p:P,v:V) input
+PinvLV(p:P,lv:LV) input
+PassignVLV(p:P,v:V,lv:LV) input
+PassignLVV(p:P,lv:LV,v:V) input
+PassignLVLV(p:P,lv0:LV,lv1:LV) input
+CPextAssignLVV(c:C,p:P,lv:LV,v:V) input
+CPextAssignLVLV(c:C,p:P,lv0:LV,lv1:LV) input
+CPextAssignLVnull(c:C,p:P,lv:LV) input
+PPcallAsgnVV(p0:P,p1:P,v0:V,v1:V) input
+PPcallAsgnLVLV(p0:P,p1:P,lv0:LV,lv1:LV) input
+PPretAsgnVV(p0:P,p1:P,v0:V,v1:V) input
+PPretAsgnLVLV(p0:P,p1:P,lv0:LV,lv1:LV) input
+PPretArgsLVLV(p0:P,p1:P,lv0:LV,lv1:LV) input
+#PPextRetArgsLVLV(p0:P,p1:P,lv0:LV,lv1:LV) input
+
+CPmodargLV(c:C,p:P,lv:LV) input
+CPnonmodargLV(c:C,p:P,lv:LV) input
+CPaliasmodLV(c:C,p:P,lv:LV) input
+
+PPifBranchTarget(p0:P,p1:P) input
+PnullCmp(p:P,k:K,v:V) input
+
+thisMV(m:M,v:V) input
+thisV(v:V)
+
+PderefV(p:P,v:V) input
+
+mustSameValVLV(v:V,lv:LV) input
+mustSameValVS(v:V,s:F) input
+mustSameValVV(v:V,u:V) input
+IinitMapVV(i:I,v0:V,v1:V) input
+
+PstrUpdLV(p:P,lv:LV) input
+PstrUpdS(p:P,s:F) input
+
+PnpaStrUpdV(p:P,v:V)
+PnpaStrUpdLV(p:P,lv:LV)
+PnpaStrUpdS(p:P,s:F)
+PnonNullCheckedV(p:P,v:V)
+PnonNullCheckedLV(p:P,lv:LV)
+PnonNullCheckedS(p:P,s:F)
+
+CPnullV(c:C,p:P,v:V) output
+CPnullLV(c:C,p:P,lv:LV) output
+CPnullS(c:C,p:P,s:F) output
+
+PunsafeV(p:P,v:V) output
+
+###
+# Constraints
+###
+
+reachableCP(c,p) :- reachableCM(c,m), MP(m,p).
+
+CPcallCP(c0,p0,c1,p1) :- CICM(c0,i,c1,m), PI(p0,i), MPhead(m,p1).
+CPretCP(c0,p0,c1,p1) :- CICM(c1,i,c0,m), PI(p1,i), MPtail(m,p0).
+
+# a variable that is non-null flow-insentively
+CnonnullV(c,v) :- CVC(c,v,_).
+
+# when a variable may be null
+
+CPnullV(c,p,v) :- RPobjNullAsgnInst(p0,v), PP(p0,p), reachableCP(c,p).
+CPnullV(c,p,v) :- RPobjVarAsgnInst(p0,v,v0), CPnullV(c,p0,v0), PP(p0,p).
+CPnullV(c,p,v) :- PinvV(p0,v), PP(p0,p), reachableCP(c,p).
+CPnullV(c,p,v) :- RPgetInstFldInst(p0,v,_,_), !CnonnullV(c,v), PP(p0,p), reachableCP(c,p).
+CPnullV(c,p,v) :- RPgetStatFldInst(p0,v,s), CPnullS(c,p0,s), PP(p0,p).
+CPnullV(c,p,v) :- PassignVLV(p0,v,lv), CPnullLV(c,p0,lv), PP(p0,p).
+thisV(v) :- thisMV(_,v).
+CPnullV(c,p,v) :- CPcallCP(c0,p0,c,p1), PPcallAsgnVV(p0,p1,v,v0), !thisV(v), CPnullV(c0,p0,v0), PP(p1,p). split
+CPnullV(c,p,v) :- CPretCP(c0,p0,c,p1), PPretAsgnVV(p0,p1,v,v0), CPnullV(c0,p0,v0), PP(p1,p). split
+
+# when a static field may be null
+CPnullS(c,p,s) :- RPputStatFldNullInst(p0,s), PP(p0,p), reachableCP(c,p).
+CPnullS(c,p,s) :- RPputStatFldInst(p0,s,v), CPnullV(c,p0,v), PP(p0,p).
+CPnullS(c,p,s) :- CPnullS(c0,p0,s), CPcallCP(c0,p0,c,p1), PP(p1,p).
+CPnullS(c,p,s) :- CPnullS(c0,p0,s), CPretCP(c0,p0,c,p1), PP(p1,p).
+
+# when an lvalue may be null
+CPnullLV(c,p,lv) :- RPputInstFldNullInst(p0,v,f), VFLV(v,f,lv), PP(p0,p), reachableCP(c,p). split
+CPnullLV(c,p,lv) :- PinvLV(p0,lv), PP(p0,p), reachableCP(c,p). 
+CPnullLV(c,p,lv) :- RPobjValAsgnInst(p0,v,_), VFLV(v,_,lv), PP(p0,p), reachableCP(c,p). split
+CPnullLV(c,p,lv) :- PassignLVV(p0,lv,v), CPnullV(c,p0,v), PP(p0,p).
+CPnullLV(c,p,lv) :- PassignLVLV(p0,lv,lv0), CPnullLV(c,p0,lv0), PP(p0,p).
+CPnullLV(c,p,lv) :- CPextAssignLVnull(c,p0,lv), PP(p0,p).
+CPnullLV(c,p,lv) :- CPextAssignLVV(c,p0,lv,v), CPnullV(c,p0,v), PP(p0,p).
+CPnullLV(c,p,lv) :- CPextAssignLVLV(c,p0,lv,lv0), CPnullLV(c,p0,lv0), PP(p0,p).
+CPnullLV(c,p,lv) :- CPcallCP(c0,p0,c,p1), PPcallAsgnLVLV(p0,p1,lv,lv0), CPnullLV(c0,p0,lv0), PP(p1,p). split
+CPnullLV(c,p,lv) :- CPretCP(c0,p0,c,p1), PPretAsgnLVLV(p0,p1,lv,lv0), CPnullLV(c0,p0,lv0), PP(p1,p).
+CPnullLV(c,p,lv) :- CPretCP(c0,p0,c,p1), PPretArgsLVLV(p0,p1,lv,lv0), CPnullLV(c0,p0,lv0), CPmodargLV(c,p1,lv), PP(p1,p). split
+CPnullLV(c,p,lv) :- CPaliasmodLV(c,p0,lv), PP(p0,p).
+CPnullLV(c,p,lv) :- CPnullLV(c,p0,lv), CPnonmodargLV(c,p0,lv), PP(p0,p).
+#CPnullLV(c,p,lv) :- CPretCP(c0,p0,c,p1), PPextRetArgsLVLV(p0,p1,lv,lv0), CPnullLV(c0,p0,lv0), PP(p1,p). split
+
+# strong updates
+PnpaStrUpdV(p,v) :- PderefV(p,v).
+PnpaStrUpdV(p,v) :- PderefV(p,u), mustSameValVV(u,v).
+PnpaStrUpdLV(p,lv) :- PstrUpdLV(p,lv).
+PnpaStrUpdLV(p,lv) :- PderefV(p,v), mustSameValVLV(v,lv).
+PnpaStrUpdS(p,s) :- PstrUpdS(p,s).
+PnpaStrUpdS(p,s) :- PderefV(p,v), mustSameValVS(v,s).
+
+# checked branch
+PnonNullCheckedV(p,v) :- PnullCmp(p0,0,v), PP(p0,p), !PPifBranchTarget(p0,p).
+PnonNullCheckedV(p,v) :- PnullCmp(p0,1,v), PPifBranchTarget(p0,p).
+PnonNullCheckedV(p,v) :- PnonNullCheckedV(p,u), mustSameValVV(u,v).
+PnonNullCheckedLV(p,lv) :- PnonNullCheckedV(p,v), mustSameValVLV(v,lv).
+PnonNullCheckedS(p,s) :- PnonNullCheckedV(p,v), mustSameValVS(v,s).
+
+# propagation though straight line code and branches other than null check
+CPnullV(c,p,v) :- !PnpaStrUpdV(p0,v), CPnullV(c,p0,v), PP(p0,p), !PnonNullCheckedV(p,v), PliveV(p,v). split
+CPnullLV(c,p,lv) :- !PnpaStrUpdLV(p0,lv), CPnullLV(c,p0,lv), PP(p0,p), !PnonNullCheckedLV(p,lv), PliveLV(p,lv). split
+CPnullLV(c,p,lv) :- !PnpaStrUpdLV(p0,lv), CPnullLV(c,p0,lv), PP(p0,p), !PnonNullCheckedLV(p,lv), StatLV(lv). split
+CPnullS(c,p,s) :- !PnpaStrUpdS(p0,s), CPnullS(c,p0,s), PP(p0,p), !PnonNullCheckedS(p,s). split
+
+# safe dereferences
+PunsafeV(p,v) :- PderefV(p,v), CPnullV(_,p,v).
