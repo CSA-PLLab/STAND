@@ -105,9 +105,9 @@ PfsLVH(p:P,lv:LV,h:H) output
 
 MM(m:M,n:M) output
 
-#sVPts(v:V,h:H) output
-#fVPts(v:V,h:H) output
-#gVPts(v:V,h:H) output
+sVPts(v:V,h:H) output
+fVPts(v:V,h:H) output
+gVPts(v:V,h:H) output
 
 
 ###
@@ -236,6 +236,6 @@ PfsLVH(p,lv,h) :- PfsLVH(p0,lv,h), StatLV(lv), PretP(p0,p).
 
 MM(m,n) :- MI(m,i), fsIM(i,n).
 # final results
-#sVPts(v,h) :- fsVH(v,h), !VH(v,h).
-#gVPts(v,h) :- !fsVH(v,h), VH(v,h).
-#fVPts(v,h) :- fsVH(v,h), VH(v,h).
+sVPts(v,h) :- fsVH(v,h), !VH(v,h).
+gVPts(v,h) :- !fsVH(v,h), VH(v,h).
+fVPts(v,h) :- fsVH(v,h), VH(v,h).

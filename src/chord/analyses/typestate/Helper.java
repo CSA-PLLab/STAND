@@ -1,11 +1,14 @@
 package chord.analyses.typestate;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
 
 import joeq.Class.jq_Field;
 import joeq.Class.jq_Method;
@@ -14,6 +17,7 @@ import joeq.Compiler.Quad.RegisterFactory.Register;
 import chord.analyses.alias.CIObj;
 import chord.analyses.alias.CIPAAnalysis;
 import chord.util.ArraySet;
+import chord.util.graph.MutableLabeledGraph;
 import chord.util.tuple.object.Pair;
 
 public class Helper {
@@ -27,13 +31,13 @@ public class Helper {
 
     public static int getIndexInAP(ArraySet<AccessPath> ms, Register r) {
         for (AccessPath ap : ms) {
-            if (ap instanceof RegisterAccessPath && ((RegisterAccessPath) ap).var == r)
+            if (ap instanceof RegisterAccessPath && ((RegisterAccessPath) ap).var == r && ap.fields.isEmpty())
                 return ms.indexOf(ap);
         }
         return -1;
     }
 
-    public static int getIndexInAP(ArraySet<AccessPath> ms, Register r, int minIndex) {
+    public static int getPrefixIndexInAP(ArraySet<AccessPath> ms, Register r, int minIndex) {
         int currIndex = 0;
         for (AccessPath ap : ms) {
             if (currIndex > minIndex && ap instanceof RegisterAccessPath && ((RegisterAccessPath) ap).var == r)
@@ -43,7 +47,7 @@ public class Helper {
         return -1;
     }
 
-    public static int getIndexInAP(ArraySet<AccessPath> ms, jq_Field g, int minIndex) {
+    public static int getPrefixIndexInAP(ArraySet<AccessPath> ms, jq_Field g, int minIndex) {
         int currIndex = 0;
         for (AccessPath ap : ms) {
             if (currIndex > minIndex && ap instanceof GlobalAccessPath && ((GlobalAccessPath) ap).global == g)
@@ -53,7 +57,7 @@ public class Helper {
         return -1;
     }
 
-    public static int getIndexInAP(ArraySet<AccessPath> ms, Register r, jq_Field f, int minIndex) {
+    public static int getPrefixIndexInAP(ArraySet<AccessPath> ms, Register r, jq_Field f, int minIndex) {
         int currIndex = 0;
         for (AccessPath ap : ms) {
             if (currIndex > minIndex && ap instanceof RegisterAccessPath) {
@@ -66,7 +70,7 @@ public class Helper {
         return -1;
     }
 
-    public static int getIndexInAP(ArraySet<AccessPath> ms, jq_Field g, jq_Field f, int minIndex) {
+    public static int getPrefixIndexInAP(ArraySet<AccessPath> ms, jq_Field g, jq_Field f, int minIndex) {
         int currIndex = 0;
         for (AccessPath ap : ms) {
             if (currIndex > minIndex && ap instanceof GlobalAccessPath) {
@@ -111,11 +115,10 @@ public class Helper {
     private static Map<Register, Set<Quad>> VpointsToMap = new HashMap<Register, Set<Quad>>();
     private static Map<jq_Field, Set<Quad>> FpointsToMap = new HashMap<jq_Field, Set<Quad>>();
     private static Map<Pair<Quad, jq_Field>, Set<Quad>> HFHMap = new HashMap<Pair<Quad, jq_Field>, Set<Quad>>();
-    
-    private static Set<Quad> temp = new HashSet<Quad>(1);
 
     private static Set<Quad> pointsTo(Set<Quad> quads, jq_Field f, CIPAAnalysis cipa) {
         Set<Quad> retQuads = new HashSet<Quad>();
+        Set<Quad> temp = new HashSet<Quad>(1);
         for(Quad q : quads){
             Pair<Quad,jq_Field> p = new Pair<Quad,jq_Field>(q,f);
             Set<Quad> pts = HFHMap.get(p);
@@ -157,13 +160,76 @@ public class Helper {
         }
         return pts;
     }
-    
+	
+    private static boolean traverseGraphAndCheck(MutableLabeledGraph<Object, Object> graphedHeap, ArraySet<AccessPath> ms, 
+    		Object q, List accessPath, Set<List<jq_Field>> pathSuffixes){
+    	Set<Object> preds = graphedHeap.getPreds(q);
+    	
+    	if(preds.isEmpty() || preds == null){ //Reached the root node 
+    		Object root = accessPath.remove(0); 
+    		if(root instanceof jq_Field){
+    			for(List<jq_Field> suffix : pathSuffixes){
+	    			List<jq_Field> fields = new ArrayList<jq_Field>((List<jq_Field>)accessPath);
+	    			fields.addAll(suffix);
+	    			GlobalAccessPath gAP = new GlobalAccessPath((jq_Field)root, fields);
+	    			if(!ms.contains(gAP))
+	    				return true;
+    			}
+    		}else{ //RegisterAccessPath
 
+    			for(List<jq_Field> suffix : pathSuffixes){
+    				List<jq_Field> fields = new ArrayList<jq_Field>((List<jq_Field>)accessPath);
+	    			fields.addAll(suffix);
+	    			RegisterAccessPath rAP = new RegisterAccessPath((Register)root, fields);
+    				if(!ms.contains(rAP))
+    					return true;
+    			}
+    		}
+    		return false;
+    	}else{
+    		for(Object pred: preds){
+    			List modAccessPath = new ArrayList(accessPath);
+    			Set<Object> fields = graphedHeap.getLabels(pred, q);
+    			for(Object f : fields) //Should always loop just once
+    				modAccessPath.add(0, f);
+    			
+    			if(traverseGraphAndCheck(graphedHeap, ms, pred, modAccessPath, pathSuffixes))
+    				return true;	
+    		}
+    		return false;
+    	}
+    	
+    }
+    
+	public static boolean isAliasMissing(ArraySet<AccessPath> ms, Register v, jq_Field f, CIPAAnalysis cipa){
+		Set<List<jq_Field>> pathSuffixes = new ArraySet<List<jq_Field>>();
+		for (AccessPath ap : ms) {
+			if(ap instanceof RegisterAccessPath)
+				if(((RegisterAccessPath)ap).var.equals(v) && ap.fields.get(0).equals(f))
+					pathSuffixes.add(ap.fields.subList(1, ap.fields.size()));
+        }
+		MutableLabeledGraph<Object, Object> graphedHeap = cipa.getGraphedHeap();
+		Set<Quad> trackedAllocs = pointsTo(v, cipa);
+		for(Quad q : trackedAllocs){
+			if(traverseGraphAndCheck(graphedHeap, ms, q, new ArrayList(), pathSuffixes))
+				return true;
+		}
+		return false;
+	}
+
+	public static boolean doesAliasExist(Register v, CIPAAnalysis cipa){
+		Set<Quad> trackedAllocs = pointsTo(v, cipa);
+		for(Quad q : trackedAllocs){
+			if(cipa.doesAliasExist(q))
+				return true;
+		}
+		return false;
+	}
     
     public static ArraySet<AccessPath> removeReference(ArraySet<AccessPath> oldMS, Register r) {
         ArraySet<AccessPath> newMS = null;
         int i = -1;
-        while ((i = getIndexInAP(oldMS, r, i)) >= 0) {
+        while ((i = getPrefixIndexInAP(oldMS, r, i)) >= 0) {
             if (newMS == null) newMS = new ArraySet<AccessPath>(oldMS);
             newMS.remove(oldMS.get(i));
         }
@@ -173,7 +239,7 @@ public class Helper {
     public static ArraySet<AccessPath> removeReference(ArraySet<AccessPath> oldMS, jq_Field g) {
         ArraySet<AccessPath> newMS = null;
         int i = -1;
-        while ((i = getIndexInAP(oldMS, g, i)) >= 0) {
+        while ((i = getPrefixIndexInAP(oldMS, g, i)) >= 0) {
             if (newMS == null) newMS = new ArraySet<AccessPath>(oldMS);
             newMS.remove(oldMS.get(i));
         }
@@ -202,9 +268,10 @@ public class Helper {
         }
     }
  
-    public static void removeModifiableAccessPaths(Set<jq_Field> modFields, ArraySet<AccessPath> MS) {
-        if (modFields == null)
-            return;
+    public static boolean removeModifiableAccessPaths(Set<jq_Field> modFields, ArraySet<AccessPath> MS) {
+        boolean modified = false;
+    	if (modFields == null)
+            return modified;
         
         for (Iterator<AccessPath> i = MS.iterator(); i.hasNext();) {
             AccessPath ap = i.next();
@@ -215,9 +282,13 @@ public class Helper {
                     break;
                 }
             }
-            if (mod)
+            if (mod){
                 i.remove();
-        }        
+                modified = true;
+            }
+        }
+        
+        return modified;
     }
     
     public static void removeAllExceptLocalVariables(ArraySet<AccessPath> MS){

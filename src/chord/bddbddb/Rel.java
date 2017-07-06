@@ -578,6 +578,9 @@ public class Rel {
         public AryNIterable getAryNValTuples() {
             return new AryNIterable(b, keptDoms);
         }
+        public IntAryNIterable getAryNIntTuples(){
+        	return new IntAryNIterable(b, keptDoms);
+        }
         /**
          * Frees this view.
          */
@@ -593,6 +596,16 @@ public class Rel {
                 checkRange(val, domIdx);
             }
         }
+        
+        /**
+         * Xin: Don't use this method, always use selectAndDelete. It will fill in garbage
+         * values to domIdx after the selection. For example, if you want to select (v1,h1)
+         * from VH using v = v1, the relView will become (v*,h1).
+         * 
+         * @param domIdx
+         * @param idx
+         */
+        @Deprecated
         public void select(int domIdx, int idx) {
             assert (keptDoms[domIdx]);
             try {
@@ -1572,6 +1585,40 @@ public class Rel {
             throw new RuntimeException(ex);
         }
     }
+    
+    
+    public boolean contains(int idx0, int idx1, int idx2) {
+        if (bdd == null)
+            throw new RuntimeException("");
+        try {
+            return !bdd.id().andWith(
+                domBdds[0].ithVar(idx0).andWith(
+                domBdds[1].ithVar(idx1).andWith(
+                domBdds[2].ithVar(idx2)))).isZero();
+        } catch (BDDException ex) {
+            checkRange(idx0, 0);
+            checkRange(idx1, 1);
+            checkRange(idx2, 2);
+            throw new RuntimeException(ex);
+        }
+    }
+    
+    public void remove(int idx0, int idx1, int idx2) {
+        if (bdd == null)
+            throw new RuntimeException("");
+        try {
+            bdd.andWith(
+                domBdds[0].ithVar(idx0).andWith(
+                domBdds[1].ithVar(idx1).andWith(
+                domBdds[2].ithVar(idx2))).not());
+        } catch (BDDException ex) {
+            checkRange(idx0, 0);
+            checkRange(idx1, 1);
+            checkRange(idx2, 2);
+            throw new RuntimeException(ex);
+        }
+    }
+    
     public <T0,T1,T2> TrioIterable<T0,T1,T2> getAry3ValTuples() {
         if (bdd == null)
             throw new RuntimeException("");
@@ -1646,6 +1693,43 @@ public class Rel {
             throw new RuntimeException(ex);
         }
     }
+    
+    public boolean contains(int idx0, int idx1, int idx2, int idx3) {
+        if (bdd == null)
+            throw new RuntimeException("");
+        try {
+            return !bdd.id().andWith(
+                domBdds[0].ithVar(idx0).andWith(
+                domBdds[1].ithVar(idx1).andWith(
+                domBdds[2].ithVar(idx2).andWith(
+                domBdds[3].ithVar(idx3))))).isZero();
+        } catch (BDDException ex) {
+            checkRange(idx0, 0);
+            checkRange(idx1, 1);
+            checkRange(idx2, 2);
+            checkRange(idx3, 3);
+            throw new RuntimeException(ex);
+        }
+    }
+    
+    public void remove(int idx0, int idx1, int idx2, int idx3) {
+        if (bdd == null)
+            throw new RuntimeException("");
+        try {
+            bdd.andWith(
+                domBdds[0].ithVar(idx0).andWith(
+                domBdds[1].ithVar(idx1).andWith(
+                domBdds[2].ithVar(idx2).andWith(
+                domBdds[3].ithVar(idx3)))).not());
+        } catch (BDDException ex) {
+            checkRange(idx0, 0);
+            checkRange(idx1, 1);
+            checkRange(idx2, 2);
+            checkRange(idx3, 3);
+            throw new RuntimeException(ex);
+        }
+    }
+    
     public <T0,T1,T2,T3> QuadIterable<T0,T1,T2,T3> getAry4ValTuples() {
         if (bdd == null)
             throw new RuntimeException("");
@@ -1789,6 +1873,28 @@ public class Rel {
             checkRange(idx3, 3);
             checkRange(idx4, 4);
             checkRange(idx5, 5);
+        }
+    }
+    public void add(int idx0, int idx1, int idx2, int idx3, int idx4, int idx5, int idx6) {
+        if (bdd == null)
+            throw new RuntimeException("");
+        try {
+            bdd.orWith(
+                domBdds[0].ithVar(idx0).andWith(
+                domBdds[1].ithVar(idx1).andWith(
+                domBdds[2].ithVar(idx2).andWith(
+                domBdds[3].ithVar(idx3).andWith(
+                domBdds[4].ithVar(idx4).andWith(
+                domBdds[5].ithVar(idx5).andWith(
+                domBdds[6].ithVar(idx6))))))));
+        } catch (BDDException ex) {
+            checkRange(idx0, 0);
+            checkRange(idx1, 1);
+            checkRange(idx2, 2);
+            checkRange(idx3, 3);
+            checkRange(idx4, 4);
+            checkRange(idx5, 5);
+            checkRange(idx6, 6);
         }
     }
     public <T0,T1,T2,T3,T4,T5> boolean contains(T0 val0, T1 val1, T2 val2, T3 val3, T4 val4, T5 val5) {

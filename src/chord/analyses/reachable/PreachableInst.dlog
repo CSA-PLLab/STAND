@@ -14,7 +14,7 @@
 PobjValAsgnInst(p:P,v:V,h:H) input 
 PobjNullAsgnInst(p:P,v:V) input 
 PobjVarAsgnInst(p:P,v0:V0,v1:V1) input 
-PgetInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
+PgetInstFldInst(p:P,v0:V0,v1:V1,f:F) input 
 PgetStatFldInst(p:P,v:V,s:F) input
 PputInstFldInst(p:P,v0:V0,f:F,v1:V1) input 
 PputInstFldNullInst(p:P,v:V,f:F) input 
@@ -42,7 +42,7 @@ RPcheckCastInst(p:P,v0:V0,v1:V1) output
 RPobjValAsgnInst(p,v,h) :- PobjValAsgnInst(p,v,h), reachableP(p).
 RPobjNullAsgnInst(p,v) :- PobjNullAsgnInst(p,v), reachableP(p).
 RPobjVarAsgnInst(p,v0,v1) :- PobjVarAsgnInst(p,v0,v1), reachableP(p).
-RPgetInstFldInst(p,v0,f,v1) :- PgetInstFldInst(p,v0,f,v1), reachableP(p).
+RPgetInstFldInst(p,v0,f,v1) :- PgetInstFldInst(p,v0,v1,f), reachableP(p).
 RPputInstFldInst(p,v0,f,v1) :- PputInstFldInst(p,v0,f,v1), reachableP(p).
 RPputInstFldNullInst(p,v,f) :- PputInstFldNullInst(p,v,f), reachableP(p).
 RPgetStatFldInst(p,v,s) :- PgetStatFldInst(p,v,s), reachableP(p).

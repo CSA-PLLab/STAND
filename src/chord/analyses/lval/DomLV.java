@@ -23,7 +23,7 @@ import chord.util.tuple.object.Trio;
 
 @Chord(
 	name = "LV",
-	consumes = {"VH","FH","HF","HFH"}
+	consumes = {"VH","FH","HFH"}
 )
 
 public class DomLV extends ProgramDom<Lvalue> {
@@ -87,21 +87,21 @@ public class DomLV extends ProgramDom<Lvalue> {
 		}
 		relFH.close();
 		
-		// fill up hf
-		ProgramRel relHF = (ProgramRel) ClassicProject.g().getTrgt("HF");
-		relHF.load();
-		PairIterable<Object, jq_Field> hftuples = relHF.getAry2ValTuples();
-		for(Pair<Object, jq_Field> p : hftuples) {
-			Object h = p.val0;
-			jq_Field f = p.val1;
-			Set<jq_Field> fset = hf.get(h);
-			if(fset == null) {
-				fset = new HashSet<jq_Field>();
-				hf.put(h, fset);
-			}
-			fset.add(f);
-		}
-		relHF.close();
+		// // fill up hf
+		// ProgramRel relHF = (ProgramRel) ClassicProject.g().getTrgt("HF");
+		// relHF.load();
+		// PairIterable<Object, jq_Field> hftuples = relHF.getAry2ValTuples();
+		// for(Pair<Object, jq_Field> p : hftuples) {
+		// 	Object h = p.val0;
+		// 	jq_Field f = p.val1;
+		// 	Set<jq_Field> fset = hf.get(h);
+		// 	if(fset == null) {
+		// 		fset = new HashSet<jq_Field>();
+		// 		hf.put(h, fset);
+		// 	}
+		// 	fset.add(f);
+		// }
+		// relHF.close();
 		
 		// fill up hfh
 		ProgramRel relHFH = (ProgramRel) ClassicProject.g().getTrgt("HFH");

@@ -1,0 +1,109 @@
+# name=fspg-kcfa-dlog
+
+.include "C.dom"
+.include "V.dom"
+.include "H.dom"
+.include "F.dom"
+.include "M.dom"
+.include "P.dom"
+.include "I.dom"
+.include "T.dom"
+
+.bddvarorder C0xC1_P0xP1xI0_T0_M0_V0xV1_H0_F0_H1
+
+###
+# Relations
+###
+
+MP(m:M,p:P) input
+argCopy(i:I,u:V1,m:M,v:V0) input
+retCopy(i:I,u:V,m:M,v:V) input
+PI(p:P,i:I) input
+MI(m:M,i:I) input
+PP(p:P,q:P) input
+MPhead(m:M,p:P) input
+MPtail(m:M,p:P) input
+IinvkArg0(i:I,v:V1) input
+IHM(i:I,h:H,m:M) input
+CIC(c:C,i:I,d:C) input
+specIM(i:I,m:M) input
+statIM(i:I,m:M) input
+
+reachableCM(c:C,m:M)
+reachableT(t:T) input
+clinitTM(t:T,m:M) input
+CICM(c:C,i:I,c:C,m:M)
+VHfilter(v:V,h:H) input
+
+MobjValAsgnInst(m:M,v:V,h:H) input
+MobjVarAsgnInst(m:M,u:V,v:V) input
+PgetInstFldInst(p:P,u:V,v:V,f:F) input
+PputInstFldInst(p:P,v0:V0,f:F,v1:V1) input
+PgetStatFldInst(p:P,v:V,s:F) input
+PputStatFldInst(p:P,s:F,v:V) input
+
+CpgVH(c:C,v:V,h:H) output
+CPpgHFH(c:C,p:P,h:H,f:F,g:H) output
+CPpgSH(c:C,p:P,s:F,h:H) output
+
+pgVH(v:V,h:H) output
+
+###
+# Constraints
+###
+
+reachableCM(0,0).
+reachableCM(c,m) :- CICM(_,_,c,m).
+reachableCM(0,m) :- reachableClinitM(m).
+reachableM(m) :- reachableCM(_,m).
+
+reachableCI(c,i) :- MI(m,i), reachableCM(c,m).
+
+# call site resolution
+CIH(c,i,h) :- IinvkArg0(i,v), CpgVH(c,v,h).
+
+
+# virtual calls
+CICM(c,i,d,m) :- reachableCI(c,i), CIH(c,i,h), IHM(i,h,m), CIC(c,i,d).
+# special calls
+CICM(c,i,d,m) :- reachableCI(c,i), specIM(i,m), CIH(c,i,_), CIC(c,i,d).
+# static calls
+CICM(c,i,d,m) :- reachableCI(c,i), statIM(i,m), CIC(c,i,d).
+
+
+reachableClinitM(m) :- clinitTM(t,m), reachableT(t).
+
+RobjValAsgnInst(c,l,h) :- reachableCM(c,m), MobjValAsgnInst(m,l,h).
+CpgVH(c,v,h) :- RobjValAsgnInst(c,v,h).
+
+RobjVarAsgnInst(c,l,r) :- reachableCM(c,m), MobjVarAsgnInst(m,l,r).
+CpgVH(c,v,h) :- RobjVarAsgnInst(c,v,u), CpgVH(c,u,h), VHfilter(v,h).
+
+RPgetInstFldInst(c,p,l,b,f) :- reachableCM(c,m), MP(m,p),PgetInstFldInst(p,l,f,b).
+CpgVH(c,v,h) :- RPgetInstFldInst(c,p,v,u,f), CpgVH(c,u,h1), CPpgHFH(c,p,h1,f,h), VHfilter(v,h).
+
+RPgetStatFldInst(c,p,l,f) :- reachableCM(c,m), MP(m,p), PgetStatFldInst(p,l,f).
+CpgVH(c,v,h) :- RPgetStatFldInst(c,p,v,s), CPpgSH(c,p,s,h), VHfilter(v,h).
+
+CVCV(d,v,c,u) :- argCopy(i,u,m,v), CICM(c,i,d,m).
+CVCV(c,u,d,v) :- retCopy(i,u,m,v), CICM(c,i,d,m).
+
+CpgVH(c,v,h) :- CVCV(c,v,d,u), CpgVH(d,u,h), VHfilter(v,h).
+
+RPputInstFldInst(c,p,b,f,r) :- reachableCM(c,m), MP(m,p), PputInstFldInst(p,b,f,r).
+CPpgHFH(c,p,h,f,g) :- RPputInstFldInst(c,p0,v,f,u), CpgVH(c,v,h), CpgVH(c,u,g), PP(p0,p). split
+
+CPpgHFH(c,p,h,f,g) :- CPpgHFH(d,p0,h,f,g), CICM(d,i,c,m), PI(p0,i), MPhead(m,p).
+CPpgHFH(c,p,h,f,g) :- CPpgHFH(d,t,h,f,g), CICM(c,i,d,m), MPtail(m,t), PI(p0,i), PP(p0,p). split
+CPpgHFH(c,p,h,f,g) :- CPpgHFH(c,p0,h,f,g), PP(p0,p).
+CPpgHFH(0,p,h,f,g) :- CPpgHFH(_,t,h,f,g), MPtail(m,t), reachableClinitM(m), MPhead(0,p). split
+
+RPputStatFldInst(c,p,f,l) :- reachableCM(c,m), MP(m,p), PputStatFldInst(p,f,l).
+CPpgSH(c,p,s,h) :- RPputStatFldInst(c,p,s,v), CpgVH(c,v,h).
+
+CPpgSH(c,p,s,g) :- CPpgSH(d,p0,s,g), CICM(d,i,c,m), PI(p0,i), MPhead(m,p).
+CPpgSH(c,p,s,g) :- CPpgSH(d,t,s,g), CICM(c,i,d,m), MPtail(m,t), PI(p0,i), PP(p0,p). split
+CPpgSH(c,p,s,g) :- CPpgSH(c,p0,s,g), PP(p0,p).
+CPpgSH(0,p,s,g) :- CPpgSH(_,t,s,g), MPtail(m,t), reachableClinitM(m), MPhead(0,p). split
+
+pgVH(v,h) :- CpgVH(_,v,h).
