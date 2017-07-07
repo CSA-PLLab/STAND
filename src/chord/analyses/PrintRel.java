@@ -259,17 +259,7 @@ public class PrintRel extends JavaAnalysis {
 		rel.close();
 		outFile.close();
 
-		// relName = "PfsSH";
-
-		// outFile = OutDirUtils.newPrintWriter(relName + suffix + ".txt");
-		// rel = (ProgramRel) ClassicProject.g().getTrgt(relName);
-		// rel.load();
-		// Iterable<Trio<Quad, Quad, Quad>> tuplesMethods = rel.getAry3ValTuples();
-		// for(Trio<Quad, Quad, Quad> t : tuplesMethods){
-		// 	outFile.print("PfsSH " + t.val0 + "--" + t.val1 + "--" + t.val2 + "\n");
-		// }
-		// rel.close();
-		// outFile.close();
+		// relName = 
 /*
 		relName = "tStartThis";
 		rel = (ProgramRel) ClassicProject.g().getTrgt(relName);
