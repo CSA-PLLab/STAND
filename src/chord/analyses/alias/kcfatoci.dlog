@@ -1,0 +1,31 @@
+# name=kcfa-ci-dlog
+
+.include "C.dom"
+.include "V.dom"
+.include "H.dom"
+.include "F.dom"
+
+.bddvarorder C0_V0_H0_F0_C1_H1
+
+###
+# Relations
+###
+
+CVC(c:C,v:V,d:C) input
+CFC(c:C,f:F,d:C) input
+FC(s:F,c:C) input
+CH(c:C,h:H) input
+
+CVH(c:C,v:V,h:H) output
+VH(v:V,h:H) output
+FH(s:F,h1:H) output
+HFH(h0:H,f:F,h1:H) output
+
+###
+# Constraints
+###
+
+CVH(c,v,h) :- CVC(c,v,d), CH(d,h).
+VH(v,h) :- CVH(_,v,h).
+FH(s,h) :- FC(s,c), CH(c,h).
+HFH(h0,f,h1) :- CFC(c,f,d), CH(c,h0), CH(d,h1).
